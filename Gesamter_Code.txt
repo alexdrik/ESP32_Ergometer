@@ -1,0 +1,371 @@
+﻿==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\config.h
+==
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// GPIO Pins
+#define MOTOR_POS_PIN 1   // Output-Pin fÃ¼r Motorrichtung positiv
+#define MOTOR_NEG_PIN 2   // Output-Pin fÃ¼r Motorrichtung negativ
+#define KADENCE_PIN 3     // Input-Pin fÃ¼r Kadenz-Messung
+#define INKREMENTAL_PIN 4 // Input-Pin fÃ¼r Inkrementalgeber-Messung
+#define REFERENCE_PIN 5   // Input-Pin fÃ¼r Inkrementalgeber-Referenz
+#define RESERVE_PIN 6     // noch nicht benutzt
+
+#define GEAR_PLUS 16  // Input-Pin fÃ¼r schwereren Gang
+#define GEAR_MINUS 17 // Input-Pin fÃ¼r leichteren Gang
+
+#define MENU_SWITCH 0 // Input-Pin fÃ¼r MenÃ¼-Umschaltung
+#define MENU_EDIT 4   // Input-Pin fÃ¼r MenÃ¼-Bedienung
+
+// System-Konstanten
+#define DEBOUNCE_DELAY 150 // Entprellzeit in ms
+#define DIAG_INTERVAL 1000 // Diagnose-Intervall in ms
+
+// Gangschaltung Ãœbersetzungen (z.B. 15 GÃ¤nge)
+// Faktor * 100 (z.B. Gang 1 = 2.57, Gang 15 = 8.44)
+const uint32_t GEAR_COUNT = 15;
+const uint32_t GEAR_RATIOS[GEAR_COUNT] = {
+    257, // Gang 1 - 1:
+    281, // Gang 1 - 2:
+    311, // Gang 1 - 3:
+    348, // Gang 1 - 4:
+    382, // Gang 2 - 2:
+    422, // Gang 2 - 3:
+    472, // Gang 2 - 4:
+    501, // Gang 2 - 5:
+    535, // Gang 2 - 6:
+    596, // Gang 3 - 4:
+    633, // Gang 3 - 5:
+    675, // Gang 3 - 6:
+    723, // Gang 3 - 7:
+    779, // Gang 3 - 8:
+    844  // Gang 3 - 9:
+};
+
+// Motorpositionen (z.B. 24 Stufen)
+const uint32_t MOTOR_POS_COUNT = 24;
+const uint32_t MOTOR_NEG_RELPOS = 32;
+const uint32_t MOTOR_ABSPOS[MOTOR_POS_COUNT] = {
+    0,   //  1 - 680
+    140, //  2 - 540
+    234, //  3 - 446
+    284, //  4 - 396
+    344, //  5 - 336
+    374, //  6 - 306
+    410, //  7 - 270
+    440, //  8 - 240
+    468, //  9 - 212
+    488, // 10 - 192
+    510, // 11 - 170
+    528, // 12 - 152
+    546, // 13 - 134
+    558, // 14 - 122
+    572, // 15 - 108
+    586, // 16 -  94
+    604, // 17 -  76
+    614, // 18 -  66
+    624, // 19 -  56
+    634, // 20 -  46
+    644, // 21 -  36
+    654, // 22 -  26
+    664, // 23 -  16
+    680  // 24 -   0
+};
+
+#endif
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\diag_display.cpp
+==
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+
+void showDiagData()
+{
+  static uint32_t lastDiagTime = 0;
+  if (millis() - lastDiagTime > DIAG_INTERVAL)
+    {
+      lastDiagTime = millis();
+      Serial.printf("[DIAG - Core %d] Puls: %d bpm | Gang: %d | Power: %d W\n",
+                    xPortGetCoreID(), systemData.heartRateBPM,
+                    systemData.currentGear, systemData.currentPowerWatt);
+    }
+}
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\getInputs.cpp
+==
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+
+void getFTMSInputs()
+{
+  // Logik fÃ¼r FTMS-Eingaben von Fitness-Apps folgt
+}
+
+void getPulsInputs()
+{
+  // Logik fÃ¼r Pulsmessung folgt
+  systemData.heartRateBPM = 120;
+}
+
+void getGPIOInputs()
+{
+  // Logik fÃ¼r Reed-Sensor / Taster folgt
+}
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\init_sys.cpp
+==
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+
+// Definition der globalen Datenstruktur (nur einmal im Projekt!)
+ErgometerData systemData;
+
+void ESP_init()
+{
+  Serial.begin(115200);
+  pinMode(SENSOR_PIN, INPUT_PULLUP);
+
+  systemData.cadenceRPM = 0;
+  systemData.heartRateBPM = 0;
+  systemData.pedalPulseDetected = false;
+  systemData.currentGear = 1;
+  systemData.targetMotorPosition = 0;
+  systemData.controlMode = 0;
+  systemData.speedKmH = 0;
+  systemData.currentPowerWatt = 0;
+
+  Serial.println("-> [1] ESP32-Basis initialisiert.");
+}
+
+void WLAN_init() { Serial.println("-> [2] WLAN bereit."); }
+
+void Bluetooth_init() { Serial.println("-> [3] Bluetooth FTMS bereit."); }
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\main_prg.cpp
+==
+
+getFTMSInputs();
+getPulsInputs();
+getGPIOInputs();
+
+calcCtrlMode();
+calcGear();
+calcMotorPos();
+
+setGPIOOutputs();
+setFTMSOutputs();
+
+showDiagData();
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\modules.h
+==
+
+#ifndef MODULES_H
+#define MODULES_H
+
+// Haupt-Steuerungsschleife
+void main_prg();
+
+// 1. Initialisierung
+void ESP_init();
+void WLAN_init();
+void Bluetooth_init();
+
+// 2. Inputs
+void getFTMSInputs();
+void getPulsInputs();
+void getGPIOInputs();
+
+// 3. Processing
+void calcCtrlMode();
+void calcGear();
+void calcMotorPos();
+
+// 4. Outputs
+void setGPIOOutputs();
+void setFTMSOutputs();
+
+// 5. Diagnose
+void showDiagData();
+
+#endif
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\processing.cpp
+==
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+
+void calcCtrlMode()
+{
+  // Regelungsberechnung folgt
+}
+
+void calcGear()
+{
+  // Gangberechnung folgt
+}
+
+void calcMotorPos()
+{
+  // Stellmotorberechnung folgt
+}
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\setOutputs.cpp
+==
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+
+void setGPIOOutputs()
+{
+  // Hardware-Ausgaben (z.B. Schrittmotor) folgt
+}
+
+void setFTMSOutputs()
+{
+  // Bluetooth-Daten senden folgt
+}
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\system_data.h
+==
+
+#ifndef SYSTEM_DATA_H
+#define SYSTEM_DATA_H
+
+#include <Arduino.h>
+
+struct ErgometerData
+{
+    uint32_t cadenceRPM;
+    uint32_t heartRateBPM;
+    bool pedalPulseDetected;
+    
+    uint32_t currentGear;
+    uint32_t targetMotorPosition;
+    uint32_t controlMode; 
+    
+    uint32_t speedKmH;       
+    uint32_t currentPowerWatt;
+};
+
+// Deklaration: Macht die Struktur fÃ¼r alle .cpp Dateien sichtbar
+extern ErgometerData systemData;
+
+#endif
+
+
+
+==
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\Task_Config.ino
+==
+
+#include "modules.h"
+
+/*
+Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {
+Write-Output "==`nFILE: $($_.FullName)`n==`n"; Get-Content $_.FullName;
+Write-Output "`n`n" } | Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8
+Get-Content Gesamter_Code.txt | Set-Clipboard
+
+* ==============================================================================
+ *                         PROGRAMMAUFRUF-HIERARCHIE
+ * ==============================================================================
+ * [Core 0] - System & Connectivity (AusgefÃ¼hrt von FreeRTOS im Hintergrund)
+ *   +-- WLAN_init()                (Verbindung zum Netzwerk herstellen)
+ *   +-- Bluetooth_init()           (BLE-Server & FTMS-Dienste starten)
+ * ------------------------------------------------------------------------------
+ * [Core 1] - Applikation & Hardware-Steuerung (Haupt-Task)
+ *   +-- setup()                    (Einstiegspunkt fÃ¼r Core 1)
+ *   |     +-- ESP_init()           (Serielle Schnittstelle & GPIOs
+konfigurieren)
+ *   |     +-- xTaskCreatePinned... (ErgometerTask erstellen und an Core 1
+binden)
+ *   +-- loop()                     (Leerlauf / SchlÃ¤ft fÃ¼r Watchdog-StabilitÃ¤t)
+ *   +-- ErgometerLoop()            (Endlosschleife auf Core 1, Intervall: 10ms)
+ *         +-- main_prg()           (Das zentrale Steuerungsprogramm)
+ *               |-- [INPUTS EINLESEN]
+ *               |     +-- getFTMSInputs()   (EmpfÃ¤ngt Vorgaben von
+Fitness-Apps)
+ *               |     +-- getPulsInputs()   (Pulsdaten von Sensor/Brustgurt
+holen)
+ *               |     +-- getGPIOInputs()   (Physische Taster & Reed-Sensor
+lesen)
+ *               |-- [VERARBEITUNG & BERECHNUNG]
+ *               |     +-- calcCtrlMode()    (Regelungsmodus bestimmen:
+Watt/Manuell)
+ *               |     +-- calcGear()        (Virtuellen Gang berechnen)
+ *               |     +-- calcMotorPos()    (Stellmotor-Sollposition berechnen)
+ *               |-- [OUTPUTS SCHREIBEN]
+ *               |     +-- setGPIOOutputs()  (Stellmotor & Hardware ansteuern)
+ *               |     +-- setFTMSOutputs()  (Trainingsdaten via BLE an App
+senden)
+ *               |-- [DIAGNOSE]
+ *                     +-- showDiagData()    (Konsolenausgabe alle 1000ms auf
+Core 1)
+ * ==============================================================================
+ */
+
+TaskHandle_t ErgometerTask;
+
+// Der eigentliche Programmlauf fÃ¼r dein Ergometer auf Core 1
+void ErgometerLoop(void *pvParameters)
+{
+  Serial.print("Ergometer-Task gestartet auf Core: ");
+  Serial.println(xPortGetCoreID());
+
+  for (;;)
+    {
+      main_prg();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+void setup()
+{
+  ESP_init();
+  WLAN_init();
+  Bluetooth_init();
+
+  xTaskCreatePinnedToCore(ErgometerLoop, "ErgometerTask", 10000, NULL, 1,
+                          &ErgometerTask, 1);
+}
+
+void loop() { vTaskDelay(pdMS_TO_TICKS(1000)); }
+
+
+

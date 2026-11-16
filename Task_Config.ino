@@ -1,61 +1,72 @@
 #include "modules.h"
 
-// Task-Handle für die Ergometer-Steuerung auf Core 1
+/*
+Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {Write-Output
+"==`nFILE: $($_.FullName)`n==`n"; Get-Content $_.FullName;Write-Output "`n`n" }
+| Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8 Get-Content
+Gesamter_Code.txt | Set-Clipboard
+
+* ==============================================================================
+ *                         PROGRAMMAUFRUF-HIERARCHIE
+ * ==============================================================================
+ * [Core 0] - System & Connectivity (Ausgeführt von FreeRTOS im Hintergrund)
+ *   +-- WLAN_init()                (Verbindung zum Netzwerk herstellen)
+ *   +-- Bluetooth_init()           (BLE-Server & FTMS-Dienste starten)
+ * ------------------------------------------------------------------------------
+ * [Core 1] - Applikation & Hardware-Steuerung (Haupt-Task)
+ *   +-- setup()                    (Einstiegspunkt für Core 1)
+ *   |     +-- ESP_init()           (Serielle Schnittstelle & GPIOs
+konfigurieren)
+ *   |     +-- xTaskCreatePinned... (ErgometerTask erstellen und an Core 1
+binden)
+ *   +-- loop()                     (Leerlauf / Schläft für Watchdog-Stabilität)
+ *   +-- ErgometerLoop()            (Endlosschleife auf Core 1, Intervall: 10ms)
+ *         +-- main_prg()           (Das zentrale Steuerungsprogramm)
+ *               |-- [INPUTS EINLESEN]
+ *               |     +-- getFTMSInputs()   (Empfängt Vorgaben von
+Fitness-Apps)
+ *               |     +-- getPulsInputs()   (Pulsdaten von Sensor/Brustgurt
+holen)
+ *               |     +-- getGPIOInputs()   (Physische Taster & Reed-Sensor
+lesen)
+ *               |-- [VERARBEITUNG & BERECHNUNG]
+ *               |     +-- calcCtrlMode()    (Regelungsmodus bestimmen:
+Watt/Manuell)
+ *               |     +-- calcGear()        (Virtuellen Gang berechnen)
+ *               |     +-- calcMotorPos()    (Stellmotor-Sollposition berechnen)
+ *               |-- [OUTPUTS SCHREIBEN]
+ *               |     +-- setGPIOOutputs()  (Stellmotor & Hardware ansteuern)
+ *               |     +-- setFTMSOutputs()  (Trainingsdaten via BLE an App
+senden)
+ *               |-- [DIAGNOSE]
+ *                     +-- showDiagData()    (Konsolenausgabe alle 1000ms auf
+Core 1)
+ * ==============================================================================
+ */
+
 TaskHandle_t ErgometerTask;
 
 // Der eigentliche Programmlauf für dein Ergometer auf Core 1
-void ErgometerLoop(void * pvParameters)
-    {
-    Serial.print("Ergometer-Task gestartet auf Core: ");
-    Serial.println(xPortGetCoreID());
+void ErgometerLoop(void *pvParameters)
+{
+  Serial.print("Ergometer-Task gestartet auf Core: ");
+  Serial.println(xPortGetCoreID());
 
-    for(;;) // Endlosschleife für Core 1
-        {
-        // 1. INPUT
-        getFTMSInputs();
-        getPulsInputs();
-        getGPIOInputs();
-        
-        // 2. PROCESSING
-        calcCtrlMode();
-        calcGear();
-        calcMotorPos();
-        
-        // 3. OUTPUT
-        setGPIOOutputs();
-        setFTMSOutputs();
-        
-        // 4. DIAGNOSE
-        showDiagData();
-        
-        vTaskDelay(pdMS_TO_TICKS(10)); // 10ms Pause (schont den Watchdog-Timer)
-        }
+  for (;;)
+    {
+      main_prg();
+      vTaskDelay(pdMS_TO_TICKS(10));
     }
+}
 
 void setup()
-    {
-    // Hardware initialisieren (läuft kurz auf Core 1 an)
-    ESP_init();
-    
-    // WLAN und Bluetooth initialisieren (FreeRTOS schiebt deren Hintergrund-Prozesse auf Core 0)
-    WLAN_init();
-    Bluetooth_init();
+{
+  ESP_init();
+  WLAN_init();
+  Bluetooth_init();
 
-    // Wir erstellen den Ergometer-Task und binden ihn fest an Core 1 (letzter Parameter = 1)
-    xTaskCreatePinnedToCore(
-        ErgometerLoop,     /* Funktion, die den Task ausführt */
-        "ErgometerTask",   /* Name des Tasks */
-        10000,             /* Stack-Größe in Words */
-        NULL,              /* Task-Parameter */
-        1,                 /* Priorität des Tasks */
-        &ErgometerTask,    /* Task-Handle */
-        1                  /* Core-ID (1) */
-    );
-    }
+  xTaskCreatePinnedToCore(ErgometerLoop, "ErgometerTask", 10000, NULL, 1,
+                          &ErgometerTask, 1);
+}
 
-void loop()
-    {
-    // Der Standard-Loop bleibt leer, da unser ErgometerLoop als Task auf Core 1 läuft.
-    // Core 0 kümmert sich im Hintergrund autark um WLAN/BLE.
-    vTaskDelay(pdMS_TO_TICKS(1000)); 
-    }
+void loop() { vTaskDelay(pdMS_TO_TICKS(1000)); }

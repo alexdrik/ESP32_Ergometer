@@ -15,6 +15,12 @@
 #define MENU_SWITCH 0 // Input-Pin für Menü-Umschaltung
 #define MENU_EDIT 4   // Input-Pin für Menü-Bedienung
 
+// T-Display-S3 Onboard-Display Konfiguration
+#define PIN_POWER_ON 15 // Schaltet die Stromversorgung des Displays ein
+#define PIN_LCD_BL 38   // Hintergrundbeleuchtung (Backlight)
+
+#define DIAG_INTERVAL 1000
+
 // System-Konstanten
 #define DEBOUNCE_DELAY 150 // Entprellzeit in ms
 #define DIAG_INTERVAL 1000 // Diagnose-Intervall in ms
