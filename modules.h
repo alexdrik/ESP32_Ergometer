@@ -7,6 +7,7 @@ void main_prg();
 // 1. Initialisierung
 void ESP_init();
 void WLAN_init();
+void WLAN_update();
 void Bluetooth_init();
 void Display_init();
 
@@ -26,6 +27,7 @@ void setFTMSOutputs();
 
 // 5. Diagnose
 void showDiagData();
-void setField();
+void showDisplayDiag();
+void setField(uint32_t row, uint32_t col, const char *label, uint32_t value);
 
 #endif
