@@ -19,6 +19,12 @@ FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\config.h
 #define MENU_SWITCH 0 // Input-Pin fÃ¼r MenÃ¼-Umschaltung
 #define MENU_EDIT 4   // Input-Pin fÃ¼r MenÃ¼-Bedienung
 
+// T-Display-S3 Onboard-Display Konfiguration
+#define PIN_POWER_ON 15 // Schaltet die Stromversorgung des Displays ein
+#define PIN_LCD_BL 38   // Hintergrundbeleuchtung (Backlight)
+
+#define DIAG_INTERVAL 1000
+
 // System-Konstanten
 #define DEBOUNCE_DELAY 150 // Entprellzeit in ms
 #define DIAG_INTERVAL 1000 // Diagnose-Intervall in ms
@@ -85,6 +91,12 @@ FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\diag_display.cpp
 #include "config.h"
 #include "modules.h"
 #include "system_data.h"
+#include <TFT_eSPI.h>
+
+TFT_eSPI tft = TFT_eSPI();
+
+const uint32_t COL_WIDTH_PX = 64;
+const uint32_t ROW_HEIGHT_PX = 8;
 
 void showDiagData()
 {
@@ -92,9 +104,92 @@ void showDiagData()
   if (millis() - lastDiagTime > DIAG_INTERVAL)
     {
       lastDiagTime = millis();
-      Serial.printf("[DIAG - Core %d] Puls: %d bpm | Gang: %d | Power: %d W\n",
-                    xPortGetCoreID(), systemData.heartRateBPM,
-                    systemData.currentGear, systemData.currentPowerWatt);
+
+      // Einzeilige Definition: setField(REIHE, SPALTE, "LABEL", WERT)
+      // Reihe 0
+      setField(0, 0, "MODE", systemData.controlMode);
+      setField(0, 1, "RPM", systemData.cadenceRPM);
+      setField(0, 2, "WATT", systemData.currentPowerWatt);
+      setField(0, 3, "MOT", systemData.targetMotorPosition);
+      setField(0, 4, "UP", millis() / 1000);
+
+      // Reihe 1
+      setField(1, 0, "GEAR", systemData.currentGear);
+      setField(1, 1, "PULS", systemData.heartRateBPM);
+      setField(1, 2, "KMH", systemData.speedKmH);
+      setField(1, 3, "PED", systemData.pedalPulseDetected ? 1 : 0);
+
+      // Reihe 2
+
+      // Reihe 3
+
+      // Reihe 4
+
+      // Grafikengine triggern: PrÃ¼ft auf Ã„nderungen und zeichnet flimmerfrei
+      showDisplayDiag();
+    }
+}
+
+// Super kompakte Hilfsfunktion fÃ¼r deine Update-Zeilen!
+void setField(uint32_t row, uint32_t col, const char *label, uint32_t value)
+{
+  if (row < MATRIX_ROWS && col < MATRIX_COLS)
+    {
+      // Kopiere das Label (maximal 5 Zeichen)
+      strncpy(systemData.displayLabels[row][col], label, 5);
+      systemData.displayLabels[row][col][5] = '\0';
+
+      // Weise den Wert zu
+      systemData.displayValues[row][col] = value;
+    }
+}
+
+// Baut aus den Labels und Werten den finalen String zusammen
+void updateMatrixText()
+{
+  for (uint32_t r = 0; r < MATRIX_ROWS; r++)
+    {
+      for (uint32_t c = 0; c < MATRIX_COLS; c++)
+        {
+          if (strlen(systemData.displayLabels[r][c]) > 0)
+            {
+              snprintf(systemData.displayMatrix[r][c], COL_CHAR_LIMIT + 1,
+                       "%-4s:%4d", systemData.displayLabels[r][c],
+                       systemData.displayValues[r][c]);
+            }
+          else
+            {
+              strcpy(systemData.displayMatrix[r][c], "          ");
+            }
+        }
+    }
+}
+
+void showDisplayDiag()
+{
+  updateMatrixText();
+
+  static char lastMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1] = {0};
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+
+  for (uint32_t r = 0; r < MATRIX_ROWS; r++)
+    {
+      for (uint32_t c = 0; c < MATRIX_COLS; c++)
+        {
+          if (strcmp(systemData.displayMatrix[r][c], lastMatrix[r][c]) != 0)
+            {
+              uint32_t x = c * COL_WIDTH_PX;
+              uint32_t y = r * ROW_HEIGHT_PX;
+
+              tft.drawString(systemData.displayMatrix[r][c], x, y);
+
+              strncpy(lastMatrix[r][c], systemData.displayMatrix[r][c],
+                      COL_CHAR_LIMIT);
+              lastMatrix[r][c][COL_CHAR_LIMIT] = '\0';
+            }
+        }
     }
 }
 
@@ -154,9 +249,35 @@ void ESP_init()
   Serial.println("-> [1] ESP32-Basis initialisiert.");
 }
 
-void WLAN_init() { Serial.println("-> [2] WLAN bereit."); }
+void initOnboardDisplay()
+{
+  pinMode(PIN_POWER_ON, OUTPUT);
+  digitalWrite(PIN_POWER_ON, HIGH);
 
-void Bluetooth_init() { Serial.println("-> [3] Bluetooth FTMS bereit."); }
+  pinMode(PIN_LCD_BL, OUTPUT);
+  digitalWrite(PIN_LCD_BL, HIGH);
+
+  tft.init();
+  tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+
+  // Alles leeren beim Start
+  for (uint32_t r = 0; r < MATRIX_ROWS; r++)
+    {
+      for (uint32_t c = 0; c < MATRIX_COLS; c++)
+        {
+          strcpy(systemData.displayLabels[r][c], "");
+          systemData.displayValues[r][c] = 0;
+          strcpy(systemData.displayMatrix[r][c], "");
+        }
+    }
+
+  Serial.println("-> [2] Display initialisiert.");
+}
+
+void WLAN_init() { Serial.println("-> [3] WLAN bereit."); }
+
+void Bluetooth_init() { Serial.println("-> [4] Bluetooth FTMS bereit."); }
 
 
 
@@ -164,18 +285,27 @@ void Bluetooth_init() { Serial.println("-> [3] Bluetooth FTMS bereit."); }
 FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\main_prg.cpp
 ==
 
-getFTMSInputs();
-getPulsInputs();
-getGPIOInputs();
+#include "modules.h"
 
-calcCtrlMode();
-calcGear();
-calcMotorPos();
+void main_prg()
+{
+  // 1. Inputs einlesen -> getInputs.cpp
+  getFTMSInputs();
+  getPulsInputs();
+  getGPIOInputs();
 
-setGPIOOutputs();
-setFTMSOutputs();
+  // 2. Verarbeitung/Berechnung -> processing.cpp
+  calcCtrlMode();
+  calcGear();
+  calcMotorPos();
 
-showDiagData();
+  // 3. Outputs schreiben -> setOutputs.cpp
+  setGPIOOutputs();
+  setFTMSOutputs();
+
+  // 4. Diagnose ausgeben -> diag_Display.cpp
+  showDiagData();
+}
 
 
 
@@ -269,21 +399,31 @@ FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\system_data.h
 
 #include <Arduino.h>
 
+const uint32_t MATRIX_ROWS = 21;
+const uint32_t MATRIX_COLS = 5;
+const uint32_t COL_CHAR_LIMIT = 10;
+
 struct ErgometerData
 {
-    uint32_t cadenceRPM;
-    uint32_t heartRateBPM;
-    bool pedalPulseDetected;
-    
-    uint32_t currentGear;
-    uint32_t targetMotorPosition;
-    uint32_t controlMode; 
-    
-    uint32_t speedKmH;       
-    uint32_t currentPowerWatt;
+  // Physische Trainingsdaten
+  uint32_t cadenceRPM;
+  uint32_t heartRateBPM;
+  bool pedalPulseDetected;
+  uint32_t currentGear;
+  uint32_t targetMotorPosition;
+  uint32_t controlMode;
+  uint32_t speedKmH;
+  uint32_t currentPowerWatt;
+
+  // Speicher fÃ¼r Labels und Werte
+  char displayLabels[MATRIX_ROWS][MATRIX_COLS]
+                    [6]; // Max 5 Zeichen fÃ¼r Label (z.B. "RPM")
+  uint32_t displayValues[MATRIX_ROWS][MATRIX_COLS];
+
+  // Der fertige String fÃ¼r das Display
+  char displayMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1];
 };
 
-// Deklaration: Macht die Struktur fÃ¼r alle .cpp Dateien sichtbar
 extern ErgometerData systemData;
 
 #endif
@@ -297,10 +437,10 @@ FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\Task_Config.ino
 #include "modules.h"
 
 /*
-Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {
-Write-Output "==`nFILE: $($_.FullName)`n==`n"; Get-Content $_.FullName;
-Write-Output "`n`n" } | Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8
-Get-Content Gesamter_Code.txt | Set-Clipboard
+Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {Write-Output
+"==`nFILE: $($_.FullName)`n==`n"; Get-Content $_.FullName;Write-Output "`n`n" }
+| Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8 Get-Content
+Gesamter_Code.txt | Set-Clipboard
 
 * ==============================================================================
  *                         PROGRAMMAUFRUF-HIERARCHIE

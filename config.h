@@ -19,8 +19,6 @@
 #define PIN_POWER_ON 15 // Schaltet die Stromversorgung des Displays ein
 #define PIN_LCD_BL 38   // Hintergrundbeleuchtung (Backlight)
 
-#define DIAG_INTERVAL 1000
-
 // System-Konstanten
 #define DEBOUNCE_DELAY 150 // Entprellzeit in ms
 #define DIAG_INTERVAL 1000 // Diagnose-Intervall in ms

@@ -1,12 +1,21 @@
-getFTMSInputs();
-getPulsInputs();
-getGPIOInputs();
+#include "modules.h"
 
-calcCtrlMode();
-calcGear();
-calcMotorPos();
+void main_prg()
+{
+  // 1. Inputs einlesen -> getInputs.cpp
+  getFTMSInputs();
+  getPulsInputs();
+  getGPIOInputs();
 
-setGPIOOutputs();
-setFTMSOutputs();
+  // 2. Verarbeitung/Berechnung -> processing.cpp
+  calcCtrlMode();
+  calcGear();
+  calcMotorPos();
 
-showDiagData();
+  // 3. Outputs schreiben -> setOutputs.cpp
+  setGPIOOutputs();
+  setFTMSOutputs();
+
+  // 4. Diagnose ausgeben -> diag_Display.cpp
+  showDiagData();
+}

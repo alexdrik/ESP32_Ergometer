@@ -8,6 +8,7 @@ void main_prg();
 void ESP_init();
 void WLAN_init();
 void Bluetooth_init();
+void Display_init();
 
 // 2. Inputs
 void getFTMSInputs();
@@ -25,5 +26,6 @@ void setFTMSOutputs();
 
 // 5. Diagnose
 void showDiagData();
+void setField();
 
 #endif

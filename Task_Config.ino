@@ -46,6 +46,19 @@ Core 1)
 
 TaskHandle_t ErgometerTask;
 
+void setup()
+{
+  ESP_init();
+  Display_init();
+  WLAN_init();
+  Bluetooth_init();
+
+  xTaskCreatePinnedToCore(ErgometerLoop, "ErgometerTask", 10000, NULL, 1,
+                          &ErgometerTask, 1);
+}
+
+void loop() { vTaskDelay(pdMS_TO_TICKS(1000)); }
+
 // Der eigentliche Programmlauf für dein Ergometer auf Core 1
 void ErgometerLoop(void *pvParameters)
 {
@@ -58,15 +71,3 @@ void ErgometerLoop(void *pvParameters)
       vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
-
-void setup()
-{
-  ESP_init();
-  WLAN_init();
-  Bluetooth_init();
-
-  xTaskCreatePinnedToCore(ErgometerLoop, "ErgometerTask", 10000, NULL, 1,
-                          &ErgometerTask, 1);
-}
-
-void loop() { vTaskDelay(pdMS_TO_TICKS(1000)); }
