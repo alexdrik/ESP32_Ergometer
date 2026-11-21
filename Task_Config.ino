@@ -85,3 +85,18 @@ void WlanUpdateLoop(void *pvParameters)
           100)); // Muss nicht so oft laufen (100ms reicht völlig!)
     }
 }
+
+// Deklaration der internen Funktion aus init_sys.cpp
+void handleHeartRateConnection();
+
+void WlanUpdateLoop(void *pvParameters)
+{
+  Serial.print("WLAN & BLE Client-Task gestartet auf Core: ");
+  Serial.println(xPortGetCoreID());
+  for (;;)
+    {
+      WLAN_Update();                  // Lauscht auf Core 0 nach OTA-Updates
+      handleHeartRateConnection();    // Behandelt Pulsgurt-Verbindungen auf Core 0
+      vTaskDelay(pdMS_TO_TICKS(100)); // 100ms CPU-Entlastung
+    }
+}

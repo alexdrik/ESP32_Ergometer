@@ -2,15 +2,16 @@
 #define CONFIG_H
 
 // GPIO Pins
-#define MOTOR_POS_PIN 1   // Output-Pin für Motorrichtung positiv
-#define MOTOR_NEG_PIN 2   // Output-Pin für Motorrichtung negativ
-#define KADENCE_PIN 3     // Input-Pin für Kadenz-Messung
-#define INKREMENTAL_PIN 4 // Input-Pin für Inkrementalgeber-Messung
-#define REFERENCE_PIN 5   // Input-Pin für Inkrementalgeber-Referenz
-#define RESERVE_PIN 6     // noch nicht benutzt
+#define MOTOR_POS_PIN 1 // Output-Pin für Motorrichtung positiv
+#define MOTOR_NEG_PIN 2 // Output-Pin für Motorrichtung negativ
+#define RESERVE_PIN 3   // noch nicht benutzt
 
-#define GEAR_PLUS 16  // Input-Pin für schwereren Gang
-#define GEAR_MINUS 17 // Input-Pin für leichteren Gang
+#define KADENCE_PIN 10     // Input-Pin für Kadenz-Messung
+#define INKREMENTAL_PIN 11 // Input-Pin für Inkrementalgeber-Messung
+#define REFERENCE_PIN 12   // Input-Pin für Inkrementalgeber-Referenz
+
+#define GEAR_PLUS 17  // Input-Pin für schwereren Gang
+#define GEAR_MINUS 18 // Input-Pin für leichteren Gang
 
 #define MENU_EDIT 4   // Input-Pin für Menü-Bedienung
 #define MENU_SWITCH 0 // Input-Pin für Menü-Umschaltung
@@ -23,8 +24,18 @@
 #define DEBOUNCE_DELAY 150 // Entprellzeit in ms
 #define DIAG_INTERVAL 1000 // Diagnose-Intervall in ms
 
+// Physikalische Konstanten für die Fahrrad-Simulation
+const float GRAVITY_G = 9.81f;       // Erdbeschleunigung in m/s^2
+const float CR_ROLL_RESIST = 0.004f; // Rollwiderstandsbeiwert (guter Rennradreifen)
+const float CW_AERO = 0.32f;         // Luftwiderstandsbeiwert * Stirnfläche (Aero-Faktor)
+
+// Gesamtgewicht von Fahrer und Fahrrad (in kg für die Leistungsberechnung am Berg)
+const float TOTAL_SYSTEM_WEIGHT_KG = 120.0f; // z.B. 105kg Fahrer + 15kg Ergometer
+
+// Radumfang-Konfiguration (in Millimetern für die präzise Berechnung)
+const float WHEEL_CIRCUMFERENCE_MM = 2200.0f;
+
 // Gangschaltung Übersetzungen (z.B. 15 Gänge)
-// Faktor * 100 (z.B. Gang 1 = 2.57, Gang 15 = 8.44)
 const uint32_t GEAR_COUNT = 13;
 const float32 GEAR_RATIOS[GEAR_COUNT] = {
     0.99f, // Gang 1 - 1:

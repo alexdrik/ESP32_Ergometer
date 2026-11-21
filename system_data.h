@@ -11,7 +11,8 @@ struct ErgometerData
 {
   // Physische Trainingsdaten
   bool pedalPulseDetected;
-  bool btClientCOnnected;
+  bool btClientCOnnected; // Status des FTMS-Servers
+  bool hrSensorConnected; // Status des Pulsgurts
 
   int32_t cadenceRPM;
   int32_t heartRateBPM;
@@ -20,9 +21,11 @@ struct ErgometerData
   int32_t controlMode;
   int32_t currentPowerWatt;
   int32_t targetPowerWatt;
+  int32_t distanceMillimeters;
 
-  float targetSlope; // Steigung in % (z.B. -1.5f oder 5.5f)
-  float speedKmH;    // Geschwindigkeit (z.B. 28.4f)
+  float targetSlope;    // Steigung in % (z.B. -1.5f oder 5.5f)
+  float speedKmH;       // Geschwindigkeit (z.B. 28.4f)
+  float targetTorqueNm; // Bremsmoment vom Ergometer (z.B. 45.0f)
 
   // Speicher für Labels und Werte
   char displayLabels[MATRIX_ROWS][MATRIX_COLS]
