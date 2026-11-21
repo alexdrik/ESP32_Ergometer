@@ -25,12 +25,63 @@ extern volatile int32_t rxHeartRate;
 extern volatile int32_t rxHrBattery;
 extern volatile bool rxHrConnected;
 
+// Statische Variablen für den gleitenden Puls-Mittelwert (10 Sekunden)
+const int32_t BUFFER_SIZE = 10;
+static int32_t hrBuffer[BUFFER_SIZE] = {0};
+static int32_t bufferIndex = 0;
+static uint32_t lastBufferTime = 0;
+static bool bufferFull = false;
+
 void getPulsInputs()
 {
-  // Threadsichere Übergabe an die Datenstruktur von Core 1
+  uint32_t nowMs = millis();
+
+  // 1. Threadsichere Übernahme der Rohdaten von Core 0
   systemData.heartRateBPM = rxHeartRate;
   systemData.heartRateBatteryPercent = rxHrBattery;
   systemData.hrSensorConnected = rxHrConnected;
+
+  // 2. Signalverarbeitung: Gleitender Mittelwert-Filter
+  if (systemData.hrSensorConnected && systemData.heartRateBPM > 0)
+    {
+      // Jede Sekunde (1000ms) schreiben wir den aktuellen Puls in den Ringpuffer
+      if (nowMs - lastBufferTime >= 1000)
+        {
+          lastBufferTime = nowMs;
+          hrBuffer[bufferIndex] = systemData.heartRateBPM;
+          bufferIndex++;
+
+          if (bufferIndex >= BUFFER_SIZE)
+            {
+              bufferIndex = 0;
+              bufferFull = true; // Puffer ist voll, wir haben stabile 10 Sekunden gefiltert
+            }
+        }
+
+      // Mittelwert berechnen
+      if (bufferFull)
+        {
+          int32_t hrSum = 0;
+          for (int32_t i = 0; i < BUFFER_SIZE; i++)
+            {
+              hrSum += hrBuffer[i];
+            }
+          systemData.heartRateBPM_Average = hrSum / BUFFER_SIZE;
+        }
+      else
+        {
+          // Solange der Puffer noch nicht voll ist, nehmen wir direkt den aktuellen Puls als Fallback
+          systemData.heartRateBPM_Average = systemData.heartRateBPM;
+        }
+    }
+  else
+    {
+      // Wenn kein Sensor verbunden ist, setzen wir den Filter zurück
+      memset(hrBuffer, 0, sizeof(hrBuffer));
+      bufferIndex = 0;
+      bufferFull = false;
+      systemData.heartRateBPM_Average = 0;
+    }
 }
 
 // ==============================================================================

@@ -7,6 +7,14 @@ const uint32_t MATRIX_ROWS = 21;
 const uint32_t MATRIX_COLS = 5;
 const uint32_t COL_CHAR_LIMIT = 10;
 
+// Die neuen, sprechenden Betriebsmodi des Smartbikes
+enum class OpMode : int32_t {
+  HOMING = 0, // Referenzfahrt nach dem Start
+  MANUAL = 1, // Manueller Modus über Gangschaltung
+  PULS = 2,   // Puls-Training (Cardio-Modus)
+  SIMU = 3    // Interaktive Strecken-Simulation (Kinomap)
+};
+
 struct ErgometerData
 {
   // Physische Trainingsdaten
@@ -16,6 +24,7 @@ struct ErgometerData
 
   int32_t cadenceRPM;
   int32_t heartRateBPM;
+  int32_t heartRateBPM_Average;
   int32_t currentGear;
   int32_t targetMotorPosition;
   int32_t controlMode;
@@ -34,6 +43,8 @@ struct ErgometerData
 
   // Der fertige String für das Display
   char displayMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1];
+
+  OpMode controlMode;
 };
 
 extern ErgometerData systemData;

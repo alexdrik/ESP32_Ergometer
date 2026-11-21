@@ -36,6 +36,12 @@ static BLEAdvertisedDevice *myDevice;
 static BLEClient *pClient = nullptr;
 static bool doConnect = false;
 
+// PWM-Einstellungen für das DRV8833 (20kHz Frequenz, 8-Bit Auflösung -> 0 bis 255)
+const uint32_t PWM_FREQ = 20000;
+const uint8_t PWM_RES_BITS = 8;
+const uint8_t CH_MOTOR_POS = 0; // PWM Kanal 0
+const uint8_t CH_MOTOR_NEG = 1; // PWM Kanal 1
+
 // Callback für den Empfang der Live-Pulsdaten
 static void hrNotifyCallback(
     BLERemoteCharacteristic *pBLERemoteCharacteristic,
@@ -170,6 +176,12 @@ void ESP_init()
   pinMode(MENU_SWITCH, INPUT_PULLUP);
   pinMode(MENU_EDIT, INPUT_PULLUP);
 
+  // DRV8833 PWM Pins an die Hardware-Kanäle koppeln
+  ledcSetup(CH_MOTOR_POS, PWM_FREQ, PWM_RES_BITS);
+  ledcSetup(CH_MOTOR_NEG, PWM_FREQ, PWM_RES_BITS);
+  ledcAttachPin(MOTOR_POS_PIN, CH_MOTOR_POS);
+  ledcAttachPin(MOTOR_NEG_PIN, CH_MOTOR_NEG);
+
   // 2. Hardware-Interrupts aktivieren
   attachInterrupt(digitalPinToInterrupt(KADENCE_PIN), cadenceISR, RISING);
   attachInterrupt(digitalPinToInterrupt(INKREMENTAL_PIN), encoderISR, RISING);
@@ -182,7 +194,7 @@ void ESP_init()
   systemData.pedalPulseDetected = false;
   systemData.currentGear = 4;
   systemData.targetMotorPosition = 0;
-  systemData.controlMode = 0;
+  systemData.controlMode = OpMode::HOMING;
   systemData.speedKmH = 0.0f;
   systemData.targetSlope = 0.0f;
   systemData.currentPowerWatt = 0;
