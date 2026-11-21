@@ -1,62 +1,41 @@
 #include "modules.h"
 
 /*
-Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {Write-Output
-"==`nFILE: $($_.FullName)`n==`n"; Get-Content $_.FullName;Write-Output "`n`n" }
-| Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8 Get-Content
-Gesamter_Code.txt | Set-Clipboard
+Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {Write-Output "==============================================================================`nFILE: $($_.FullName)`n==============================================================================`n"; Get-Content $_.FullName;Write-Output "`n`n" } | Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8
+Get-Content Gesamter_Code.txt | Set-Clipboard
 
 /*
  * ==============================================================================
  *                         PROGRAMMAUFRUF-HIERARCHIE
  * ==============================================================================
- *
  * [Core 0] - System, Netzwerk & Connectivity (Hintergrund-Tasks)
- *   |
- *   +-- WLAN_init()                (WLAN-Verbindung herstellen & OTA
-initialisieren)
- *   +-- Bluetooth_init()           (BLE-Server starten & FTMS-Dienste
-bereitstellen)
- *   |
+ *   +-- WLAN_init()                (WLAN-Verbindung herstellen & OTA initialisieren)
+ *   +-- Bluetooth_init()           (BLE-Server starten & FTMS-Dienste bereitstellen)
  *   +-- WlanUpdateLoop()           (Eigener Task auf Core 0, Intervall: 100ms)
- *         +-- WLAN_Update()        (Lauscht auf Core 0 völlig autark nach
-OTA-Updates)
- *
+ *         +-- WLAN_Update()        (Lauscht auf Core 0 völlig autark nach OTA-Updates)
  * ------------------------------------------------------------------------------
- *
  * [Core 1] - Applikation & Hardware-Steuerung (Echtzeit-Haupt-Tasks)
  *   +-- setup()                    (Einstiegspunkt für Core 1)
- *   |     +-- ESP_init()           (Basis-GPIOs konfigurieren & Variablen
-nullen)
+ *   |     +-- ESP_init()           (Basis-GPIOs konfigurieren & Variablen nullen)
  *   |     +-- initOnboardDisplay() (Display-Hardware starten & Gitter leeren)
- *   |     +-- xTaskCreatePinned... (ErgometerTask erstellen und an Core 1
-binden)
- *   |     +-- xTaskCreatePinned... (WlanUpdateTask erstellen und an Core 0
-binden)
- *   +-- loop()                     (Leerlauf-Sicherungs-Task / Schläft für
-Watchdog)
+ *   |     +-- xTaskCreatePinned... (ErgometerTask erstellen und an Core 1 binden)
+ *   |     +-- xTaskCreatePinned... (WlanUpdateTask erstellen und an Core 0 binden)
+ *   +-- loop()                     (Leerlauf-Sicherungs-Task / Schläft für Watchdog)
  *   +-- ErgometerLoop()            (Hauptschleife auf Core 1, Intervall: 10ms)
  *         +-- main_prg()           (Das zentrale Steuerungsprogramm)
  *               |-- [INPUTS EINLESEN]
- *               |     +-- getFTMSInputs()   (Vorgaben von Bluetooth
-Fitness-Apps holen)
- *               |     +-- getPulsInputs()   (Pulsdaten von Sensor/Brustgurt
-lesen)
- *               |     +-- getGPIOInputs()   (Physische Taster & Gangschaltung
-einlesen)
+ *               |     +-- getFTMSInputs()   (Vorgaben von Bluetooth Fitness-Apps holen)
+ *               |     +-- getPulsInputs()   (Pulsdaten von Sensor/Brustgurt lesen)
+ *               |     +-- getGPIOInputs()   (Physische Taster & Gangschaltung einlesen)
  *               |-- [VERARBEITUNG & BERECHNUNG]
- *               |     +-- calcCtrlMode()    (Regelungsmodus bestimmen:
-Watt/Manuell)
+ *               |     +-- calcCtrlMode()    (Regelungsmodus bestimmen: Watt/Manuell)
  *               |     +-- calcGear()        (Virtuellen Gang berechnen)
  *               |     +-- calcMotorPos()    (Stellmotor-Sollposition ermitteln)
  *               |-- [OUTPUTS SCHREIBEN]
- *               |     +-- setGPIOOutputs()  (Stellmotor für den Widerstand
-ansteuern)
- *               |     +-- setFTMSOutputs()  (Trainingsdaten über Bluetooth
-senden)
+ *               |     +-- setGPIOOutputs()  (Stellmotor für den Widerstand ansteuern)
+ *               |     +-- setFTMSOutputs()  (Trainingsdaten über Bluetooth senden)
  *               |-- [DIAGNOSE]
- *                     +-- showDiagData()    (Echtzeit-Matrix & TFT-Display
-aktualisieren)
+ *                     +-- showDiagData()    (Echtzeit-Matrix & TFT-Display aktualisieren)
  * ==============================================================================
  */
 

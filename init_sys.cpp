@@ -1,16 +1,21 @@
 #include "config.h"
 #include "modules.h"
+#include "secrets.h"
 #include "system_data.h"
 #include <ArduinoOTA.h>
+#include <BLE2902.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
 #include <TFT_eSPI.h>
 #include <WiFi.h>
 
-// Deine WLAN-Zugangsdaten (Trage hier morgen deine echten Daten ein)
-const char *ssid = "DEIN_WLAN_NAME";
-const char *password = "DEIN_WLAN_PASSWORT";
-
 // Definition der globalen Datenstruktur (nur einmal im Projekt!)
 ErgometerData systemData;
+
+// geheime Zugangsdatena aus secrets.h reinkopieren
+const char *ssid = SECRET_SSID;
+const char *password = SECRET_PASSWORD;
 
 void ESP_init()
 {
@@ -108,6 +113,104 @@ void Display_init()
   Serial.println("-> [2] Display initialisiert.");
 }
 
-void WLAN_init() { Serial.println("-> [3] WLAN bereit."); }
+void WLAN_init() { Serial.println("-> [3] WLAN nicht bereit."); }
 
-void Bluetooth_init() { Serial.println("-> [4] Bluetooth FTMS bereit."); }
+// Asynchrone Zwischenspeicher für den Core-Übergang (Core 0 -> Core 1)
+volatile uint32_t rxControlMode = 0;
+volatile uint32_t rxTargetPower = 0;
+volatile float rxTargetSlope = 0.0f;
+volatile bool rxBtConnected = false;
+
+// UUIDs für den Fitness Machine Service (FTMS)
+#define FTMS_SERVICE_UUID "00001826-0000-1000-8000-00805f9b34fb"
+#define FTMS_CONTROL_POINT_UUID "00002ad9-0000-1000-8000-00805f9b34fb"
+
+BLEServer *pServer = nullptr;
+BLECharacteristic *pControlPointCharacteristic = nullptr;
+
+class MyServerCallbacks : public BLEServerCallbacks
+{
+  void onConnect(BLEServer *pServer)
+  {
+    rxBtConnected = true;
+  }
+
+  void onDisconnect(BLEServer *pServer)
+  {
+    rxBtConnected = false;
+    rxControlMode = 0; // Bei Verbindungsabbruch zurück in den manuellen Modus
+    pServer->startAdvertising();
+  }
+};
+
+class ControlPointCallbacks : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *pCharacteristic)
+  {
+    std::string value = pCharacteristic->getValue();
+    if (value.length() > 0)
+      {
+        uint8_t opcode = value[0];
+
+        // Opcode 0x00: Request Control (Kinomap fordert die Kontrolle an)
+        if (opcode == 0x00)
+          {
+            uint8_t response[] = {0x80, 0x00, 0x01};
+            pControlPointCharacteristic->setValue(response, 3);
+            pControlPointCharacteristic->indicate();
+          }
+
+        // Opcode 0x05: Set Target Power (ERG-Modus / Wattvorgabe)
+        else if (opcode == 0x05 && value.length() >= 3)
+          {
+            rxTargetPower = (uint32_t)(value[1] | (value[2] << 8));
+            rxControlMode = 2; // Modus auf Watt-Steuerung setzen
+
+            uint8_t response[] = {0x80, 0x05, 0x01};
+            pControlPointCharacteristic->setValue(response, 3);
+            pControlPointCharacteristic->indicate();
+          }
+
+        // Opcode 0x11: Set Simulation Parameters (Slope / Steuerungsvorgabe)
+        else if (opcode == 0x11 && value.length() >= 7)
+          {
+            // FTMS-Standard: Slope wird als vorzeichenbehafteter int16 übertragen (Auflösung 0.1 %)
+            int16_t rawSlope = (int16_t)(value[3] | (value[4] << 8));
+
+            // Umrechnung in echte physikalische float-Prozente (z.B. -15 -> -1.5f)
+            rxTargetSlope = (float)rawSlope / 10.0f;
+            rxControlMode = 1; // Modus auf Strecken-Simulation setzen
+
+            uint8_t response[] = {0x80, 0x11, 0x01};
+            pControlPointCharacteristic->setValue(response, 3);
+            pControlPointCharacteristic->indicate();
+          }
+      }
+  }
+};
+
+void Bluetooth_init()
+{
+  BLEDevice::init("DIY-Smartbike");
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService *pService = pServer->createService(FTMS_SERVICE_UUID);
+
+  pControlPointCharacteristic = pService->createCharacteristic(
+      FTMS_CONTROL_POINT_UUID,
+      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_INDICATE);
+  pControlPointCharacteristic->setCallbacks(new ControlPointCallbacks());
+  pControlPointCharacteristic->addDescriptor(new BLE2902());
+
+  pService->start();
+
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(FTMS_SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
+  pServer->startAdvertising();
+
+  Serial.println("-> Bluetooth FTMS aktiv auf Core 0.");
+}

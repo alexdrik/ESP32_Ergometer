@@ -3,90 +3,35 @@
 #include "system_data.h"
 #include <TFT_eSPI.h>
 
-extern TFT_eSPI tft = TFT_eSPI();
+TFT_eSPI tft = TFT_eSPI();
 
 const uint32_t COL_WIDTH_PX = 64;
 const uint32_t ROW_HEIGHT_PX = 8;
 
-void showDiagData()
-{
-  static uint32_t lastDiagTime = 0;
-  if (millis() - lastDiagTime > DIAG_INTERVAL)
-    {
-      lastDiagTime = millis();
-
-      // Einzeilige Definition: setField(REIHE, SPALTE, "LABEL", WERT)
-      // Reihe 0
-      setField(0, 0, "MODE", systemData.controlMode);
-      setField(0, 1, "RPM", systemData.cadenceRPM);
-      setField(0, 2, "WATT", systemData.currentPowerWatt);
-      setField(0, 3, "MOT", systemData.targetMotorPosition);
-      setField(0, 4, "UP", millis() / 1000);
-
-      // Reihe 1
-      setField(1, 0, "GEAR", systemData.currentGear);
-      setField(1, 1, "PULS", systemData.heartRateBPM);
-      setField(1, 2, "KMH", systemData.speedKmH);
-      setField(1, 3, "PED", systemData.pedalPulseDetected ? 1 : 0);
-
-      // Reihe 2
-
-      // Reihe 3
-
-      // Reihe 4
-
-      // Grafikengine triggern: Prüft auf Änderungen und zeichnet flimmerfrei
-      showDisplayDiag();
-    }
-}
-
-// Super kompakte Hilfsfunktion für deine Update-Zeilen!
-void setField(uint32_t row, uint32_t col, const char *label, uint32_t value)
+// Super einfache, universelle Hilfsfunktion zum Beschreiben der Display-Matrix!
+void setField(int32_t row, int32_t col, const char *label, const char *valueText)
 {
   if (row < MATRIX_ROWS && col < MATRIX_COLS)
     {
-      // Kopiere das Label (maximal 5 Zeichen)
-      strncpy(systemData.displayLabels[row][col], label, 5);
-      systemData.displayLabels[row][col][5] = '\0';
-
-      // Weise den Wert zu
-      systemData.displayValues[row][col] = value;
-    }
-}
-
-// Baut aus den Labels und Werten den finalen String zusammen
-void updateMatrixText()
-{
-  for (uint32_t r = 0; r < MATRIX_ROWS; r++)
-    {
-      for (uint32_t c = 0; c < MATRIX_COLS; c++)
-        {
-          if (strlen(systemData.displayLabels[r][c]) > 0)
-            {
-              snprintf(systemData.displayMatrix[r][c], COL_CHAR_LIMIT + 1,
-                       "%-4s:%4d", systemData.displayLabels[r][c],
-                       systemData.displayValues[r][c]);
-            }
-          else
-            {
-              strcpy(systemData.displayMatrix[r][c], "          ");
-            }
-        }
+      // Baut das Feld direkt im Format "LABEL:WERT" (z.B. "RPM :  85") zusammen
+      snprintf(systemData.displayMatrix[row][col],
+               COL_CHAR_LIMIT + 1,
+               "%-4s:%5s",
+               label,
+               valueText);
     }
 }
 
 void showDisplayDiag()
 {
-  updateMatrixText();
-
   static char lastMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1] = {0};
 
   tft.setTextSize(1);
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
 
-  for (uint32_t r = 0; r < MATRIX_ROWS; r++)
+  for (int32_t r = 0; r < MATRIX_ROWS; r++)
     {
-      for (uint32_t c = 0; c < MATRIX_COLS; c++)
+      for (int32_t c = 0; c < MATRIX_COLS; c++)
         {
           if (strcmp(systemData.displayMatrix[r][c], lastMatrix[r][c]) != 0)
             {
@@ -95,10 +40,56 @@ void showDisplayDiag()
 
               tft.drawString(systemData.displayMatrix[r][c], x, y);
 
-              strncpy(lastMatrix[r][c], systemData.displayMatrix[r][c],
-                      COL_CHAR_LIMIT);
+              strncpy(lastMatrix[r][c], systemData.displayMatrix[r][c], COL_CHAR_LIMIT);
               lastMatrix[r][c][COL_CHAR_LIMIT] = '\0';
             }
         }
+    }
+}
+
+void showDiagData()
+{
+  static uint32_t lastDiagTime = 0;
+  if (millis() - lastDiagTime > DIAG_INTERVAL)
+    {
+      lastDiagTime = millis();
+
+      // Puffer für die String-Umwandlung der Werte
+      char valBuf[6];
+
+      // --- REIHE 0 ---
+      itoa(systemData.controlMode, valBuf, 10);
+      setField(0, 0, "MODE", valBuf);
+
+      itoa(systemData.cadenceRPM, valBuf, 10);
+      setField(0, 1, "RPM", valBuf);
+
+      itoa(systemData.currentPowerWatt, valBuf, 10);
+      setField(0, 2, "WATT", valBuf);
+
+      itoa(systemData.targetMotorPosition, valBuf, 10);
+      setField(0, 3, "MOT", valBuf);
+
+      itoa(millis() / 1000, valBuf, 10);
+      setField(0, 4, "UP", valBuf);
+
+      // --- REIHE 1 ---
+      itoa(systemData.currentGear, valBuf, 10);
+      setField(1, 0, "GEAR", valBuf);
+
+      itoa(systemData.heartRateBPM, valBuf, 10);
+      setField(1, 1, "PULS", valBuf);
+
+      // Kontinuierlicher Float-Wert mit genau einer Nachkommastelle formatieren! (z.B. "28.4")
+      dtostrf(systemData.speedKmH, 4, 1, valBuf);
+      setField(1, 2, "KMH", valBuf);
+
+      // Kontinuierlicher Float-Wert für die Steigung (z.B. "-1.5" oder "+5.5")
+      // Das '+' Zeichen erzwingt ein sichtbares Plus oder Minus
+      snprintf(valBuf, sizeof(valBuf), "%+4.1f", systemData.targetSlope);
+      setField(1, 3, "SLOP", valBuf);
+
+      // Trigger das flimmerfreie Zeichnen
+      showDisplayDiag();
     }
 }

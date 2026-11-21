@@ -12,8 +12,8 @@
 #define GEAR_PLUS 16  // Input-Pin für schwereren Gang
 #define GEAR_MINUS 17 // Input-Pin für leichteren Gang
 
-#define MENU_SWITCH 0 // Input-Pin für Menü-Umschaltung
 #define MENU_EDIT 4   // Input-Pin für Menü-Bedienung
+#define MENU_SWITCH 0 // Input-Pin für Menü-Umschaltung
 
 // T-Display-S3 Onboard-Display Konfiguration
 #define PIN_POWER_ON 15 // Schaltet die Stromversorgung des Displays ein
@@ -25,23 +25,21 @@
 
 // Gangschaltung Übersetzungen (z.B. 15 Gänge)
 // Faktor * 100 (z.B. Gang 1 = 2.57, Gang 15 = 8.44)
-const uint32_t GEAR_COUNT = 15;
-const uint32_t GEAR_RATIOS[GEAR_COUNT] = {
-    257, // Gang 1 - 1:
-    281, // Gang 1 - 2:
-    311, // Gang 1 - 3:
-    348, // Gang 1 - 4:
-    382, // Gang 2 - 2:
-    422, // Gang 2 - 3:
-    472, // Gang 2 - 4:
-    501, // Gang 2 - 5:
-    535, // Gang 2 - 6:
-    596, // Gang 3 - 4:
-    633, // Gang 3 - 5:
-    675, // Gang 3 - 6:
-    723, // Gang 3 - 7:
-    779, // Gang 3 - 8:
-    844  // Gang 3 - 9:
+const uint32_t GEAR_COUNT = 13;
+const float32 GEAR_RATIOS[GEAR_COUNT] = {
+    0.99f, // Gang 1 - 1:
+    1.33f, // Gang 1 - 2:
+    1.68f, // Gang 1 - 3:
+    2.06f, // Gang 1 - 4:
+    2.44f, // Gang 2 - 3:
+    3.00f, // Gang 2 - 4:
+    3.47f, // Gang 2 - 5:
+    3.88f, // Gang 2 - 6:
+    4.39f, // Gang 2 - 7:
+    5.09f, // Gang 3 - 6;
+    5.77f, // Gang 3 - 6:
+    6.66f, // Gang 3 - 7:
+    7.21f  // Gang 3 - 8:
 };
 
 // Motorpositionen (z.B. 24 Stufen)

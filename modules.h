@@ -25,9 +25,9 @@ void calcMotorPos();
 void setGPIOOutputs();
 void setFTMSOutputs();
 
-// 5. Diagnose
+// 5. Diagnose & Display
 void showDiagData();
 void showDisplayDiag();
-void setField(uint32_t row, uint32_t col, const char *label, uint32_t value);
+void setField(int32_t row, int32_t col, const char *label, const char *valueText);
 
 #endif

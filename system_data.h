@@ -10,14 +10,19 @@ const uint32_t COL_CHAR_LIMIT = 10;
 struct ErgometerData
 {
   // Physische Trainingsdaten
-  uint32_t cadenceRPM;
-  uint32_t heartRateBPM;
   bool pedalPulseDetected;
-  uint32_t currentGear;
-  uint32_t targetMotorPosition;
-  uint32_t controlMode;
-  uint32_t speedKmH;
-  uint32_t currentPowerWatt;
+  bool btClientCOnnected;
+
+  int32_t cadenceRPM;
+  int32_t heartRateBPM;
+  int32_t currentGear;
+  int32_t targetMotorPosition;
+  int32_t controlMode;
+  int32_t currentPowerWatt;
+  int32_t targetPowerWatt;
+
+  float targetSlope; // Steigung in % (z.B. -1.5f oder 5.5f)
+  float speedKmH;    // Geschwindigkeit (z.B. 28.4f)
 
   // Speicher für Labels und Werte
   char displayLabels[MATRIX_ROWS][MATRIX_COLS]
