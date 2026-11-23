@@ -25,6 +25,21 @@ inline const BLEUUID ftmsControlPointUUID("00002ad9-0000-1000-8000-00805f9b34fb"
 inline const BLEUUID ftmsBikeDataUUID("00002ad2-0000-1000-8000-00805f9b34fb");
 
 // ==============================================================================
+// HARDWARE-INTERRUPTS (ISRs)
+extern void IRAM_ATTR cadenceISR();
+extern void IRAM_ATTR encoderISR();
+extern void IRAM_ATTR referenceISR();
+
+// ==============================================================================
+// Globale Bluetooth-Zeiger für den FTMS-Dienst
+inline BLEServer *pServer = nullptr;
+inline BLECharacteristic *pControlPointCharacteristic = nullptr;
+inline BLECharacteristic *pBikeDataCharacteristic = nullptr;
+// ==============================================================================
+
+// ==============================================================================
+
+// ==============================================================================
 
 // Haupt-Steuerungsschleife
 void main_prg();

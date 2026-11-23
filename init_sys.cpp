@@ -10,24 +10,9 @@
 #include <TFT_eSPI.h>
 #include <WiFi.h>
 
-// Zugriff auf die ISR-Variablen aus getInputs.cpp
-extern void IRAM_ATTR cadenceISR();
-extern void IRAM_ATTR encoderISR();
-extern void IRAM_ATTR referenceISR();
-
-BLEServer *pServer = nullptr;
-BLECharacteristic *pControlPointCharacteristic = nullptr;
-BLECharacteristic *pBikeDataCharacteristic = nullptr;
-
 static BLEAdvertisedDevice *myDevice;
 static BLEClient *pClient = nullptr;
 static bool doConnect = false;
-
-// PWM-Einstellungen für das DRV8833 (20kHz Frequenz, 8-Bit Auflösung -> 0 bis 255)
-const uint32_t PWM_FREQ = 20000;
-const uint8_t PWM_RES_BITS = 8;
-const uint8_t CH_MOTOR_POS = 0; // PWM Kanal 0
-const uint8_t CH_MOTOR_NEG = 1; // PWM Kanal 1
 
 static void hrNotifyCallback(
     BLERemoteCharacteristic *pBLERemoteCharacteristic,
@@ -212,7 +197,7 @@ void ESP_init()
   systemData.hrSensorConnected = false;
   systemData.btClientConnected = false;
 
-  // --- 2. PULSGURT MIT 90 BPM INITIALISIEREN ---
+  // --- 4. PULSGURT MIT 90 BPM INITIALISIEREN ---
   pulsGurtData.hrSensorConnected = false;
   pulsGurtData.heartRateBPM = 90;
   pulsGurtData.heartRateAverage = 90;
@@ -223,6 +208,11 @@ void ESP_init()
     {
       pulsGurtData.hrBuffer[i] = 90;
     }
+
+  // --- 5. MOTORRAMPEN INITIALISIEREN ---
+  gpioData.currentMotorState = MotorState::STOPPED;
+  gpioData.motorStateStartTime = 0;
+  gpioData.activeDirectionPos = true;)
 
   Serial.println("-> [1] ESP32-Basis & Interrupt-GPIOs erfolgreich konfiguriert.");
 }

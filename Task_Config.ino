@@ -9,13 +9,13 @@ void wirelessConnectivityLoop(void *pvParameters);
 void handleHeartRateConnection();
 
 /*
-Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {Write-Output "==============================================================================`nFILE: $($_.FullName)`n==============================================================================`n"; Get-Content $_.FullName;Write-Output "`n`n" } | Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8
+Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino -Exclude .git*, *.gitignore* | ForEach-Object {Write-Output "==============================================================================`nFILE: $($_.FullName)`n==============================================================================`n"; Get-Content $_.FullName; Write-Output "`n`n" } | Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8
 Get-Content Gesamter_Code.txt | Set-Clipboard
 
 todo:
 Code umbauen auf: "float calculatePower(float slope, float speed, float weight);"
 Spaghetti-Code entflechten und Datenfluß sauberer darstellen
-Debugging übr Display definieren und ausgeben
+Debugging über Display definieren und ausgeben
 serial.print durch WLAN.print austauschen
 Aufrufhierarchie mit Doxygen ausprobieren
 
@@ -86,13 +86,13 @@ void ErgometerLoop(void *pvParameters)
 }
 
 // Task 2: Läuft im Hintergrund auf Core 0 (WLAN OTA & BLE Pulsgurt)
-void wirelessConnectivityLoop(void *pvParameters) // Umbenannt!
+void wirelessConnectivityLoop(void *pvParameters)
 {
   Serial.print("Wireless-Task gestartet auf Core: ");
   Serial.println(xPortGetCoreID());
   for (;;)
     {
-      handleWlanOTA();                // Umbenannt! Lauscht auf Core 0 nach OTA-Updates
+      handleWlanOTA();                // Lauscht auf Core 0 nach OTA-Updates
       handleHeartRateConnection();    // Behandelt Pulsgurt-Verbindungen auf Core 0
       vTaskDelay(pdMS_TO_TICKS(100)); // 100ms CPU-Entlastung für Core 0
     }

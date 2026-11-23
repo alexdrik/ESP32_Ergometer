@@ -68,6 +68,8 @@ void getGPIOInputs()
   gpioData.cadenceRawPulse = (digitalRead(KADENCE_PIN) == LOW);
   gpioData.encoderRawPulse = (digitalRead(INKREMENTAL_PIN) == LOW);
   gpioData.referenceSwitchPressed = (digitalRead(REFERENCE_PIN) == LOW);
+  gpioData.plusBtnPressed = (digitalRead(GEAR_PLUS) == LOW);
+  gpioData.minusBtnPressed = (digitalRead(GEAR_MINUS) == LOW);
 
   // --- 2. KADENZ BERECHNEN ---
   if (now - gpioData.isrLastCadenceTime > 3000000)
@@ -84,12 +86,9 @@ void getGPIOInputs()
   gpioData.isrPedalDetected = false;
 
   // --- 3. GANGSCHALTUNG (Prellfrei) ---
-  bool plusBtnPressed = (digitalRead(GEAR_PLUS) == LOW);
-  bool minusBtnPressed = (digitalRead(GEAR_MINUS) == LOW);
-
   if (nowMs - gpioData.lastGearChangeTime > DEBOUNCE_DELAY)
     {
-      if (plusBtnPressed)
+      if (gpioData.plusBtnPressed)
         {
           if (systemData.currentGear < GEAR_COUNT)
             {
@@ -98,7 +97,7 @@ void getGPIOInputs()
               gpioData.lastGearChangeTime = nowMs;
             }
         }
-      else if (minusBtnPressed)
+      else if (gpioData.minusBtnPressed)
         {
           if (systemData.currentGear > 1)
             {

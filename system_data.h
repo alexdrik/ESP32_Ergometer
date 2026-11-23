@@ -15,15 +15,24 @@ enum class OpMode : int32_t {
   SIMU = 3    // Interaktive Strecken-Simulation (Kinomap)
 };
 
+// Zustände für die sanfte 100ms-Motor-Rampe
+enum class MotorState : int32_t {
+  STOPPED = 0,
+  ACCEL = 1,
+  RUNNING = 2,
+  DECEL = 3,
+  BACKLASH = 4
+};
+
 // ==============================================================================
 // 1. SCHNITTSTELLE: Bluetooth FTMS (Kinomap)
 // ==============================================================================
 struct FTMSServiceData
 {
-  bool btClientConnected;  // Verbindung zur App aktiv
-  float targetSlope;       // Soll-Steigung von der App in %
-  int32_t targetPowerWatt; // Soll-Leistung von der App im ERG-Modus
-  OpMode rxControlMode;    // Von der App angeforderter Modus (Simu/Manual)
+  bool btClientConnected;   // Verbindung zur App aktiv
+  float targetSlope;        // Soll-Steigung von der App in %
+  uint32_t targetPowerWatt; // Soll-Leistung von der App im ERG-Modus
+  OpMode rxControlMode;     // Von der App angeforderter Modus (Simu/Manual)
 };
 
 // ==============================================================================
@@ -31,14 +40,14 @@ struct FTMSServiceData
 // ==============================================================================
 struct PulsGurtData
 {
-  bool hrSensorConnected;   // Verbindung zum Gurt aktiv
-  int32_t heartRateBPM;     // Aktueller Live-Puls (Rohwert)
-  int32_t heartRateAverage; // Gefilterter Puls über 10 Sekunden
-  int32_t batteryPercent;   // Batterieladung in %
+  bool hrSensorConnected;    // Verbindung zum Gurt aktiv
+  uint32_t heartRateBPM;     // Aktueller Live-Puls (Rohwert)
+  uint32_t heartRateAverage; // Gefilterter Puls über 10 Sekunden
+  uint32_t batteryPercent;   // Batterieladung in %
 
-  int32_t hrBuffer[HR_BUFFER_SIZE];
-  int32_t bufferIndex;
-  int32_t hrSum;
+  uint32_t hrBuffer[HR_BUFFER_SIZE];
+  uint32_t bufferIndex;
+  uint32_t hrSum;
 };
 
 // ==============================================================================
@@ -51,11 +60,17 @@ struct GPIOHardwareData
   bool encoderRawPulse;        // Momentaner Zustand von GPIO 11 (Motor-Inkrementalgeber)
   bool referenceSwitchPressed; // Momentaner Zustand von GPIO 12 (Referenzschalter, entprellt/aktiviert)
 
-  bool pedalPulseDetected;     // Signalisiert, dass ein Kurbel-Umdrehungs-Impuls erkannt wurde (ISR-Trigger)
-  int32_t actualMotorPosition; // Aktuell gezählte Schrittzahl des Inkrementalgebers (Ist-Wert)
-  int32_t targetMotorPosition; // Anzufahrende Ziel-Schrittzahl des Stellmotors (Soll-Wert)
+  bool pedalPulseDetected;      // Signalisiert, dass ein Kurbel-Umdrehungs-Impuls erkannt wurde (ISR-Trigger)
+  uint32_t actualMotorPosition; // Aktuell gezählte Schrittzahl des Inkrementalgebers (Ist-Wert)
+  uint32_t targetMotorPosition; // Anzufahrende Ziel-Schrittzahl des Stellmotors (Soll-Wert)
 
-  int32_t lastGearChangeTime;
+  bool gpioData.plusBtnPressed;
+  bool gpioData.minusBtnPressed;
+  uint32_t lastGearChangeTime;
+
+  MotorState currentMotorState;
+  uint32_t motorStateStartTime;
+  bool activeDirectionPos;
 };
 
 // ==============================================================================
@@ -64,11 +79,13 @@ struct GPIOHardwareData
 struct ErgometerData
 {
   OpMode controlMode;           // Aktiver Steuerungsmodus (Homing, Manual, Puls, Simu)
-  int32_t currentGear;          // Aktueller virtueller Gang (1 bis 13)
+  uint32_t currentGear;         // Aktueller virtueller Gang (1 bis 13)
   float speedKmH;               // Berechnete virtuelle Geschwindigkeit in km/h
   float targetTorqueNm;         // Berechnetes Soll-Bremsmoment in Nm
-  int32_t currentPowerWatt;     // Berechnete / getretene Leistung in Watt
+  uint32_t currentPowerWatt;    // Berechnete / getretene Leistung in Watt
   uint32_t distanceMillimeters; // Gesamtstrecke in Millimetern
+
+  uint32_t lastPulsRegulatorTime = 0;
 };
 
 // ==============================================================================

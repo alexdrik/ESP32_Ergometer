@@ -48,6 +48,7 @@ const float CW_AERO = 0.32f;         // Luftwiderstandsbeiwert * Stirnfläche (A
 
 // Gesamtgewicht von Fahrer und Fahrrad (in kg für die Leistungsberechnung am Berg)
 const float TOTAL_SYSTEM_WEIGHT_KG = 120.0f; // z.B. 105kg Fahrer + 15kg Ergometer
+const int32_t CARDIO_TARGET_HR = 130;        // Soll-Puls: 130 bpm
 
 // Radumfang-Konfiguration (in Millimetern für die präzise Berechnung)
 const float WHEEL_CIRCUMFERENCE_MM = 2200.0f;
@@ -100,4 +101,11 @@ const uint32_t MOTOR_ABSPOS[MOTOR_POS_COUNT] = {
     680  // 24 -   0
 };
 
+// PWM-Einstellungen für das DRV8833 (20kHz Frequenz, 8-Bit Auflösung -> 0 bis 255)
+const uint32_t PWM_FREQ = 20000;
+const uint8_t PWM_RES_BITS = 8;
+const uint8_t CH_MOTOR_POS = 0; // PWM Kanal 0
+const uint8_t CH_MOTOR_NEG = 1; // PWM Kanal 1
+
+const uint32_t REGULATOR_INTERVAL_MS = 10000; // Regel-Intervall: 10 Sekunden (10000 ms)
 #endif

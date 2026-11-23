@@ -3,14 +3,6 @@
 #include "system_data.h"
 #include <Arduino.h>
 
-// Konstanten und statische Variablen für die Pulsregelung
-const int32_t CARDIO_TARGET_HR = 130;         // Soll-Puls: 130 bpm
-const uint32_t REGULATOR_INTERVAL_MS = 10000; // Regel-Intervall: 10 Sekunden (10000 ms)
-
-static uint32_t lastRegulatorTime = 0;
-
-extern volatile uint32_t rxControlMode;
-
 void calcCtrlMode()
 {
   uint32_t nowMs = millis();
@@ -33,9 +25,9 @@ void calcCtrlMode()
       systemData.controlMode = OpMode::PULS;
 
       // Regelungsentscheidung exakt alle 10 Sekunden ausführen
-      if (nowMs - lastRegulatorTime >= REGULATOR_INTERVAL_MS)
+      if (nowMs - systemData.lastPulsRegulatorTime >= REGULATOR_INTERVAL_MS)
         {
-          lastRegulatorTime = nowMs;
+          systemData.lastPulsRegulatorTime = nowMs;
 
           // Wir nutzen direkt das stabil gefilterte Signal aus dem Input-Modul!
           int32_t stableHR = systemData.heartRateBPM_Average;

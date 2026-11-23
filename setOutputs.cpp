@@ -3,22 +3,6 @@
 #include "system_data.h"
 #include <Arduino.h>
 
-extern volatile uint32_t isrEncoderCount;
-extern BLECharacteristic *pBikeDataCharacteristic;
-
-// PWM Kanal-Zuweisung
-const uint8_t CH_MOTOR_POS = 0;
-const uint8_t CH_MOTOR_NEG = 1;
-
-// Motor-Zustände für die Rampe
-enum class MotorState { STOPPED,
-                        ACCEL,
-                        RUNNING,
-                        DECEL };
-static MotorState currentMotorState = MotorState::STOPPED;
-static uint32_t motorStateStartTime = 0;
-static bool activeDirectionPos = true; // true = Vorwärts, false = Rückwärts
-
 // Hilfsfunktion: Setzt die PWM-Geschwindigkeit mit einer linearen 100ms-Rampe
 void driveMotorPWM(bool forward, bool stopRequest)
 {
@@ -95,76 +79,84 @@ static int32_t backlashTargetPos = 0;
 
 void setGPIOOutputs()
 {
-  systemData.actualMotorPosition = (int32_t)isrEncoderCount;
+  int32_t actualPos = gpioData.actualMotorPosition;
+  int32_t finalTarget = gpioData.targetMotorPosition;
 
-  // --- FALL 1: Referenzfahrt (Homing) nach dem Start ---
-  if (systemData.controlMode == OpMode::HOMING)
-    {
-      if (digitalRead(REFERENCE_PIN) == HIGH)
-        {
-          driveMotorPWM(false, false); // Sanft rückwärts fahren
-        }
-      else
-        {
-          driveMotorPWM(false, true); // Sanft stoppen
-
-          if (currentMotorState == MotorState::STOPPED)
-            {
-              isrEncoderCount = 0;
-              systemData.actualMotorPosition = 0;
-              systemData.controlMode = OpMode::MANUAL; // Wechsle in den manuellen Modus!
-              systemData.currentGear = 4;              // Startgang 4 setzen
-              Serial.println("-> Homing abgeschlossen. Sanfter Übergang zu MANUAL.");
-            }
-        }
-      return;
-    }
-
-  // --- FALL 2: Regulärer Betrieb mit Getriebespiel-Korrektur ---
-  int32_t finalTarget = systemData.targetMotorPosition;
+  // Absicherung des Zielbereichs
   if (finalTarget < MOTOR_ABSPOS[0])
     finalTarget = MOTOR_ABSPOS[0];
   if (finalTarget > MOTOR_ABSPOS[MOTOR_POS_COUNT - 1])
     finalTarget = MOTOR_ABSPOS[MOTOR_POS_COUNT - 1];
 
-  // Getriebespiel-Korrektur aktiv (Rückwärtsüberlauf)
-  if (isBacklashCorrectionActive)
+  // --- FALL 1: Referenzfahrt (Homing) ---
+  if (systemData.controlMode == OpMode::HOMING)
     {
-      if (systemData.actualMotorPosition > backlashTargetPos)
+      if (gpioData.referenceSwitchPressed == false)
         {
-          driveMotorPWM(false, false); // Sanft rückwärts fahren
+          driveMotorPWM(false, false); // Sanft rückwärts suchen
         }
       else
         {
           driveMotorPWM(false, true); // Sanft abbremsen
-
-          if (currentMotorState == MotorState::STOPPED)
+          if (gpioData.currentMotorState == MotorState::STOPPED)
             {
-              isBacklashCorrectionActive = false;
+              systemData.controlMode = OpMode::MANUAL;
+              systemData.currentGear = 4;
+              Serial.println("-> Homing erfolgreich abgeschlossen!");
             }
         }
       return;
     }
 
-  int32_t positionError = finalTarget - systemData.actualMotorPosition;
+  // --- FALL 2: Regulärer Betrieb (Zustandsmaschine) ---
+
+  // Zustand A: Getriebespiel-Korrektur läuft aktiv im Hintergrund
+  if (gpioData.currentMotorState == MotorState::BACKLASH)
+    {
+      if (actualPos > backlashTargetPos)
+        {
+          driveMotorPWM(false, false); // Fahre aktiv weiter rückwärts
+        }
+      else
+        {
+          driveMotorPWM(false, true); // Ziel-Überlauf erreicht -> sanft abbremsen
+
+          if (gpioData.currentMotorState == MotorState::STOPPED)
+            {
+              // Rückwärts-Überlauf beendet!
+              // Jetzt schalten wir den Zustand wieder frei, damit der Motor regulär
+              // und spielfrei von hinten (in positive Richtung) anfahren kann.
+              Serial.println("[MOTOR] Rückwärts-Überlauf beendet. Fahre jetzt spielfrei vorwärts an.");
+            }
+        }
+      return;
+    }
+
+  // Zustand B: Berechne den aktuellen Positionsfehler
+  int32_t positionError = finalTarget - actualPos;
 
   if (positionError > 0)
     {
-      driveMotorPWM(true, false); // Sanft vorwärts anfahren
+      // Vorwärtsfahrt (schwerer): Direkt und ohne Umwege anfahren
+      driveMotorPWM(true, false);
     }
   else if (positionError < 0)
     {
+      // Rückwärtsfahrt (leichter): Getriebespiel-Kompensation einleiten!
+      // Berechne die temporäre Überlauf-Position (Sollwert minus 32 Schritte)
       backlashTargetPos = finalTarget - (int32_t)MOTOR_NEG_RELPOS;
       if (backlashTargetPos < 0)
         backlashTargetPos = 0;
 
-      isBacklashCorrectionActive = true;
-      driveMotorPWM(false, true); // Vorherige Bewegung abbremsen
-      Serial.printf("[MOTOR] Getriebespiel-Korrektur gestartet! Ziel: %d\n", backlashTargetPos);
+      // Wir wechseln aktiv in den BACKLASH-Zustand und bremsen die aktuelle Bewegung ab
+      gpioData.currentMotorState = MotorState::BACKLASH;
+      driveMotorPWM(false, true);
+      Serial.printf("[MOTOR] Getriebespiel-Zustand aktiv! Fahre überlaufend zurück auf: %d\n", backlashTargetPos);
     }
   else
     {
-      driveMotorPWM(true, true); // Zielpunkt exakt erreicht -> Sanft abbremsen und halten
+      // Zielpunkt exakt und spielfrei erreicht -> Sanft abbremsen und Haltestrom halten
+      driveMotorPWM(true, true);
     }
 }
 
@@ -191,11 +183,11 @@ void setFTMSOutputs()
       //   Bit 5: 1 = Instantaneous Power present (Ja! Leistung ist dabei)
       // Flags-Wert: Bit 2 (Cadence) und Bit 5 (Power) aktiv -> 0x0004 | 0x0020 = 0x0024
       // Da wir die Geschwindigkeit immer mitsenden (ist Standard, wenn Flags Bit 0 = 0):
-      uint16_t flags = 0x0024;
 
       uint8_t txBuffer[8];
 
       // 1. Flags eintragen (Byte 0 & 1)
+      uint16_t flags = 0x0024;
       txBuffer[0] = (uint8_t)(flags & 0xFF);
       txBuffer[1] = (uint8_t)((flags >> 8) & 0xFF);
 

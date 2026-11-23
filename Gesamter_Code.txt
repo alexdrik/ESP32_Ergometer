@@ -1,0 +1,1472 @@
+﻿==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\config.h
+==============================================================================
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+/*
+lila Ader           -> +11.5V Spannungsversorgung
+dunkelblaue Ader    -> Motor negativ (GPIO 2 Ã¼ber DRV8833 Out1)
+gruene Ader          -> Motor positiv (GPIO 1 Ã¼ber DRV8833 Out2)
+gelbe Ader          -> Inkrementalgeber (GPIO 11)
+orange Ader         -> ???
+rote Ader           -> Referenzzschalter INkrementalgeber
+braune Ader         -> Ground Spannungsversorgung
+schwarze Ader       -> Reed-Schalter fÃ¼r Kadenzmessung
+*/
+
+// GPIO Pins left
+#define MOTOR_POS_PIN 1    // (ADC1 CH0) Output-Pin fuer Motorrichtung positiv
+#define MOTOR_NEG_PIN 2    // (ADC1 CH1) Output-Pin fuer Motorrichtung negativ
+#define RESERVE_PIN_3 3    // (ADC1 CH2)
+#define KADENCE_PIN 10     // (SPI2 CS)  Input-Pin fuer Kadenz-Messung
+#define INKREMENTAL_PIN 11 // (SPI2 D)   Input-Pin fuer Inkrementalgeber-Messung
+#define REFERENCE_PIN 12   // (SPI2 CLK) Input-Pin fue Inkrementalgeber-Referenz
+#define RESERVE_PIN_13 13  // (SPI2 Q)
+
+// GPIO Pins right
+#define PIN_UART_TX 43    // (UART2 Tx)
+#define PIN_UART_RX 44    // (UART2 Rx)
+#define RESERVE_PIN_18 18 // (UART1 Rx)
+#define RESERVE_PIN_17 17 // (UART1 Tx)
+#define GEAR_MINUS 21     //            Input-Pin fuer leichteren Gang
+#define GEAR_PLUS 16      //            Input-Pin fuer schwereren Gang
+
+// GPIO Pins Onboard Buttons
+#define MENU_SWITCH 0 // (Button)   Input-Pin fuer MenÃ¼-Umschaltung
+#define MENU_EDIT 14  // (Button)   Input-Pin fuer MenÃ¼-Bedienung
+
+// T-Display-S3 Onboard-Display Konfiguration
+#define PIN_POWER_ON 15 // (Display)  Schaltet die Stromversorgung des Displays ein
+#define PIN_LCD_BL 38   // Hintergrundbeleuchtung (Backlight)
+
+// System-Konstanten
+#define DEBOUNCE_DELAY 150 // Entprellzeit in ms
+#define DIAG_INTERVAL 1000 // Diagnose-Intervall in ms
+
+// Physikalische Konstanten fÃ¼r die Fahrrad-Simulation
+const float GRAVITY_G = 9.81f;       // Erdbeschleunigung in m/s^2
+const float CR_ROLL_RESIST = 0.004f; // Rollwiderstandsbeiwert (guter Rennradreifen)
+const float CW_AERO = 0.32f;         // Luftwiderstandsbeiwert * StirnflÃ¤che (Aero-Faktor)
+
+// Gesamtgewicht von Fahrer und Fahrrad (in kg fÃ¼r die Leistungsberechnung am Berg)
+const float TOTAL_SYSTEM_WEIGHT_KG = 120.0f; // z.B. 105kg Fahrer + 15kg Ergometer
+const int32_t CARDIO_TARGET_HR = 130;        // Soll-Puls: 130 bpm
+
+// Radumfang-Konfiguration (in Millimetern fÃ¼r die prÃ¤zise Berechnung)
+const float WHEEL_CIRCUMFERENCE_MM = 2200.0f;
+
+// Gangschaltung Ãœbersetzungen (z.B. 3 x 9 GÃ¤nge)
+const uint32_t GEAR_COUNT = 13;
+const float GEAR_RATIOS[GEAR_COUNT] = {
+    0.99f, // Gang 1 - 1:
+    1.33f, // Gang 1 - 2:
+    1.68f, // Gang 1 - 3:
+    2.06f, // Gang 1 - 4:
+    2.44f, // Gang 2 - 3:
+    3.00f, // Gang 2 - 4:
+    3.47f, // Gang 2 - 5:
+    3.88f, // Gang 2 - 6:
+    4.39f, // Gang 2 - 7:
+    5.09f, // Gang 3 - 5;
+    5.77f, // Gang 3 - 6:
+    6.66f, // Gang 3 - 7:
+    7.21f  // Gang 3 - 8:
+};
+
+// Motorpositionen (z.B. 24 Stufen)
+const uint32_t MOTOR_POS_COUNT = 24;
+const uint32_t MOTOR_NEG_RELPOS = 32;
+const uint32_t MOTOR_ABSPOS[MOTOR_POS_COUNT] = {
+    0,   //  1 - 680
+    140, //  2 - 540
+    234, //  3 - 446
+    284, //  4 - 396
+    344, //  5 - 336
+    374, //  6 - 306
+    410, //  7 - 270
+    440, //  8 - 240
+    468, //  9 - 212
+    488, // 10 - 192
+    510, // 11 - 170
+    528, // 12 - 152
+    546, // 13 - 134
+    558, // 14 - 122
+    572, // 15 - 108
+    586, // 16 -  94
+    604, // 17 -  76
+    614, // 18 -  66
+    624, // 19 -  56
+    634, // 20 -  46
+    644, // 21 -  36
+    654, // 22 -  26
+    664, // 23 -  16
+    680  // 24 -   0
+};
+
+// PWM-Einstellungen fÃ¼r das DRV8833 (20kHz Frequenz, 8-Bit AuflÃ¶sung -> 0 bis 255)
+const uint32_t PWM_FREQ = 20000;
+const uint8_t PWM_RES_BITS = 8;
+const uint8_t CH_MOTOR_POS = 0; // PWM Kanal 0
+const uint8_t CH_MOTOR_NEG = 1; // PWM Kanal 1
+
+const uint32_t REGULATOR_INTERVAL_MS = 10000; // Regel-Intervall: 10 Sekunden (10000 ms)
+#endif
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\diag_display.cpp
+==============================================================================
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+#include <TFT_eSPI.h>
+
+TFT_eSPI tft = TFT_eSPI();
+
+const uint32_t COL_WIDTH_PX = 64;
+const uint32_t ROW_HEIGHT_PX = 8;
+
+// Super einfache, universelle Hilfsfunktion zum Beschreiben der Display-Matrix!
+void setField(int32_t row, int32_t col, const char *label, const char *valueText)
+{
+  if (row < MATRIX_ROWS && col < MATRIX_COLS)
+    {
+      // Baut das Feld direkt im Format "LABEL:WERT" (z.B. "RPM :  85") zusammen
+      snprintf(systemData.displayMatrix[row][col],
+               COL_CHAR_LIMIT + 1,
+               "%-4s:%5s",
+               label,
+               valueText);
+    }
+}
+
+void showDisplayDiag()
+{
+  static char lastMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1] = {0};
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_GREEN, TFT_BLACK);
+
+  for (int32_t r = 0; r < MATRIX_ROWS; r++)
+    {
+      for (int32_t c = 0; c < MATRIX_COLS; c++)
+        {
+          if (strcmp(systemData.displayMatrix[r][c], lastMatrix[r][c]) != 0)
+            {
+              uint32_t x = c * COL_WIDTH_PX;
+              uint32_t y = r * ROW_HEIGHT_PX;
+
+              tft.drawString(systemData.displayMatrix[r][c], x, y);
+
+              strncpy(lastMatrix[r][c], systemData.displayMatrix[r][c], COL_CHAR_LIMIT);
+              lastMatrix[r][c][COL_CHAR_LIMIT] = '\0';
+            }
+        }
+    }
+}
+
+void showDiagData()
+{
+  static uint32_t lastDiagTime = 0;
+  if (millis() - lastDiagTime > DIAG_INTERVAL)
+    {
+      lastDiagTime = millis();
+
+      // Puffer fÃ¼r die String-Umwandlung der Werte
+      char valBuf[6];
+
+      // --- REIHE 0 ---
+      itoa(systemData.controlMode, valBuf, 10);
+      setField(0, 0, "MODE", valBuf);
+
+      itoa(systemData.cadenceRPM, valBuf, 10);
+      setField(0, 1, "RPM", valBuf);
+
+      itoa(systemData.currentPowerWatt, valBuf, 10);
+      setField(0, 2, "WATT", valBuf);
+
+      itoa(systemData.targetMotorPosition, valBuf, 10);
+      setField(0, 3, "MOT", valBuf);
+
+      itoa(millis() / 1000, valBuf, 10);
+      setField(0, 4, "UP", valBuf);
+
+      // --- REIHE 1 ---
+      itoa(systemData.currentGear, valBuf, 10);
+      setField(1, 0, "GEAR", valBuf);
+
+      itoa(systemData.heartRateBPM, valBuf, 10);
+      setField(1, 1, "PULS", valBuf);
+
+      // Kontinuierlicher Float-Wert mit genau einer Nachkommastelle formatieren! (z.B. "28.4")
+      dtostrf(systemData.speedKmH, 4, 1, valBuf);
+      setField(1, 2, "KMH", valBuf);
+
+      // Kontinuierlicher Float-Wert fÃ¼r die Steigung (z.B. "-1.5" oder "+5.5")
+      // Das '+' Zeichen erzwingt ein sichtbares Plus oder Minus
+      snprintf(valBuf, sizeof(valBuf), "%+4.1f", systemData.targetSlope);
+      setField(1, 3, "SLOP", valBuf);
+
+      // Trigger das flimmerfreie Zeichnen
+      showDisplayDiag();
+    }
+}
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\getInputs.cpp
+==============================================================================
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+#include <Arduino.h>
+
+// ==============================================================================
+void getFTMSInputs()
+{
+  // Threadsichere Zuweisung an die Hauptdatenstruktur von Core 1
+  systemData.controlMode = (int32_t)rxControlMode;
+  systemData.targetPowerWatt = (int32_t)rxTargetPower;
+  systemData.targetSlope = rxTargetSlope;
+  systemData.btClientConnected = rxBtConnected;
+}
+
+// ==============================================================================
+void getPulsInputs()
+{
+  // Da Core 0 den Puls-Filter live und synchron bei jedem BLE-Empfang berechnet,
+  // kopieren wir die Daten hier nur noch threadsicher fÃ¼r Core 1.
+  pulsGurtData.hrSensorConnected = rxHrConnected;
+  pulsGurtData.batteryPercent = rxHrBattery;
+
+  // Wenn getrennt, fallen wir auf 90 zurÃ¼ck
+  if (!pulsGurtData.hrSensorConnected)
+    {
+      pulsGurtData.heartRateBPM = 90;
+      pulsGurtData.heartRateAverage = 90;
+    }
+}
+
+// ==============================================================================
+// Interrupt-Routine fÃ¼r den Kurbelsensor (Trittfrequenz)
+void IRAM_ATTR cadenceISR()
+{
+  uint32_t now = micros();
+  // Entprellung: Ein Trittfrequenz-Signal kann physikalisch nicht schneller als alle 150ms kommen (ca. 400 RPM)
+  if (now - gpioData.isrLastCadenceTime > (DEBOUNCE_DELAY * 1000))
+    {
+      gpioData.isrCadenceDeltaUs = now - gpioData.isrLastCadenceTime;
+      gpioData.isrLastCadenceTime = now;
+      gpioData.isrPedalDetected = true;
+    }
+}
+
+// ==============================================================================
+// Interrupt-Routine fÃ¼r den Inkrementalgeber (Schritt-ZÃ¤hler Stellmotor)
+void IRAM_ATTR encoderISR()
+{
+  gpioData.isrEncoderCount++;
+}
+
+// ==============================================================================
+// Interrupt-Routine fÃ¼r den Referenz-Endschalter (Nullpunkt Stellmotor)
+void IRAM_ATTR referenceISR()
+{
+  gpioData.isrEncoderCount = 0; // Sofortige Kalibrierung der Motor-Ist-Position
+}
+
+// ==============================================================================
+void getGPIOInputs()
+{
+  uint32_t nowMs = millis();
+  uint32_t nowMicros = micros();
+
+  // --- 1. PHYSALISCHE LIVE-ZUSTÃ„NDE DER HARDWARE EINLESEN ---
+  // Reed-Sensor, Inkrementalgeber und Endschalter direkt von den Pins abfragen
+  gpioData.cadenceRawPulse = (digitalRead(KADENCE_PIN) == LOW);
+  gpioData.encoderRawPulse = (digitalRead(INKREMENTAL_PIN) == LOW);
+  gpioData.referenceSwitchPressed = (digitalRead(REFERENCE_PIN) == LOW);
+  gpioData.plusBtnPressed = (digitalRead(GEAR_PLUS) == LOW);
+  gpioData.minusBtnPressed = (digitalRead(GEAR_MINUS) == LOW);
+
+  // --- 2. KADENZ BERECHNEN ---
+  if (now - gpioData.isrLastCadenceTime > 3000000)
+    {
+      systemData.cadenceRPM = 0;
+    }
+  else if (gpioData.isrCadenceDeltaUs > 0)
+    {
+      systemData.cadenceRPM = 60000000 / isrCadenceDeltaUs;
+    }
+
+  // Pedal-Impuls-Flanke aus der ISR an den Kern Ã¼bergeben
+  gpioData.pedalPulseDetected = isrPedalDetected;
+  gpioData.isrPedalDetected = false;
+
+  // --- 3. GANGSCHALTUNG (Prellfrei) ---
+  if (nowMs - gpioData.lastGearChangeTime > DEBOUNCE_DELAY)
+    {
+      if (gpioData.plusBtnPressed)
+        {
+          if (systemData.currentGear < GEAR_COUNT)
+            {
+              systemData.currentGear++;
+              Serial.printf("-> Hochschalten! Neuer Gang: %d\n", systemData.currentGear);
+              gpioData.lastGearChangeTime = nowMs;
+            }
+        }
+      else if (gpioData.minusBtnPressed)
+        {
+          if (systemData.currentGear > 1)
+            {
+              systemData.currentGear--;
+              Serial.printf("-> Runterschalten! Neuer Gang: %d\n", systemData.currentGear);
+              gpioData.lastGearChangeTime = nowMs;
+            }
+        }
+    }
+
+  // --- 4. IST-MOTORPOSITION SPEICHERN ---
+  gpioData.actualMotorPosition = (int32_t)isrEncoderCount;
+}
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\init_sys.cpp
+==============================================================================
+
+#include "config.h"
+#include "modules.h"
+#include "secrets.h"
+#include "system_data.h"
+#include <ArduinoOTA.h>
+#include <BLE2902.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <TFT_eSPI.h>
+#include <WiFi.h>
+
+static BLEAdvertisedDevice *myDevice;
+static BLEClient *pClient = nullptr;
+static bool doConnect = false;
+
+static void hrNotifyCallback(
+    BLERemoteCharacteristic *pBLERemoteCharacteristic,
+    uint8_t *pData,
+    size_t length,
+    bool isNotify)
+{
+  if (length >= 2)
+    {
+      uint8_t flags = pData[0];
+      int32_t rawHeartRate = 0;
+
+      if ((flags & 0x01) == 0)
+        {
+          rawHeartRate = pData[1];
+        }
+      else
+        {
+          rawHeartRate = pData[1] | (pData[2] << 8);
+        }
+
+      // --- DER REKURSIVE FILTER ---
+      if (rawHeartRate > 0)
+        {
+          // 1. Letzten (Ã¤ltesten) Wert an der Zeigerposition abziehen
+          pulsGurtData.hrSum -= pulsGurtData.hrBuffer[pulsGurtData.bufferIndex];
+
+          // 2. Neuen Wert in den Puffer schreiben
+          pulsGurtData.hrBuffer[pulsGurtData.bufferIndex] = rawHeartRate;
+
+          // 3. Neuen Wert auf die Summe aufaddieren
+          pulsGurtData.hrSum += rawHeartRate;
+
+          // 4. Index fÃ¼r den nÃ¤chsten Wert verschieben (mit RingÃ¼berlauf)
+          pulsGurtData.bufferIndex++;
+          if (pulsGurtData.bufferIndex >= HR_BUFFER_SIZE)
+            {
+              pulsGurtData.bufferIndex = 0;
+            }
+
+          // 5. Mittelwert berechnen und an Core 1 Ã¼bergeben
+          pulsGurtData.heartRateBPM = rawHeartRate;
+          pulsGurtData.heartRateAverage = pulsGurtData.hrSum / HR_BUFFER_SIZE;
+        }
+    }
+}
+
+// Callback-Klasse fÃ¼r die GerÃ¤te-Suche (Scan)
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
+{
+  void onResult(BLEAdvertisedDevice advertisedDevice)
+  {
+    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(hrServiceUUID))
+      {
+        BLEDevice::getScan()->stop();
+        myDevice = new BLEAdvertisedDevice(advertisedDevice);
+        doConnect = true;
+        Serial.println("-> Pulsgurt in Reichweite gefunden!");
+      }
+  }
+};
+
+// Logik fÃ¼r den Verbindungsaufbau zum Pulsgurt
+bool connectToHeartRateSensor()
+{
+  Serial.println("-> Verbinde mit Pulsgurt...");
+  pClient = BLEDevice::createClient();
+
+  if (!pClient->connect(myDevice))
+    {
+      return false;
+    }
+
+  // 1. Herzfrequenz-Dienst abonnieren
+  BLERemoteService *pRemoteService = pClient->getService(hrServiceUUID);
+  if (pRemoteService != nullptr)
+    {
+      BLERemoteCharacteristic *pRemoteCharacteristic = pRemoteService->getRemoteCharacteristic(hrCharUUID);
+      if (pRemoteCharacteristic != nullptr && pRemoteCharacteristic->canNotify())
+        {
+          pRemoteCharacteristic->registerForNotify(hrNotifyCallback);
+          rxHrConnected = true;
+          Serial.println("-> Puls-Kanal erfolgreich abonniert.");
+        }
+    }
+
+  // 2. Batterieladezustand auslesen
+  BLERemoteService *pBatService = pClient->getService(batServiceUUID);
+  if (pBatService != nullptr)
+    {
+      BLERemoteCharacteristic *pBatCharacteristic = pBatService->getRemoteCharacteristic(batCharUUID);
+      if (pBatCharacteristic != nullptr && pBatCharacteristic->canRead())
+        {
+          std::string val = pBatCharacteristic->readValue();
+          if (val.length() > 0)
+            {
+              rxHrBattery = (int32_t)val[0];
+              Serial.printf("-> Pulsgurt-Batterie: %d %%\n", rxHrBattery);
+            }
+        }
+    }
+
+  return rxHrConnected;
+}
+
+// Diese Funktion rufen wir in deinem WLAN/Bluetooth-Task auf Core 0 auf!
+void handleHeartRateConnection()
+{
+  if (doConnect)
+    {
+      if (connectToHeartRateSensor())
+        {
+          Serial.println("-> Pulsgurt erfolgreich gekoppelt!");
+        }
+      else
+        {
+          Serial.println("-> Verbindungsaufbau fehlgeschlagen. Starte neuen Suchlauf...");
+          BLEDevice::getScan()->start(5, false);
+        }
+      doConnect = false;
+    }
+
+  // Falls die Verbindung abbricht, automatisch den Status zurÃ¼cksetzen und neu suchen
+  if (pClient != nullptr && !pClient->isConnected() && rxHrConnected)
+    {
+      rxHrConnected = false;
+      rxHeartRate = 0;
+      Serial.println("-> Verbindung zum Pulsgurt verloren. Suche erneut...");
+      BLEDevice::getScan()->start(5, false);
+    }
+}
+
+// Wird am Ende deines Bluetooth_init() in init_sys.cpp aufgerufen
+void initHeartRateScan()
+{
+  BLEScan *pBLEScan = BLEDevice::getScan();
+  pBLEScan->setCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setInterval(1349);
+  pBLEScan->setWindow(449);
+  pBLEScan->setActiveScan(true);
+  pBLEScan->start(5, false); // Suche fÃ¼r 5 Sekunden
+  Serial.println("-> BLE-Suchlauf nach Pulsgurt gestartet...");
+}
+
+void ESP_init()
+{
+  Serial.begin(115200);
+
+  // 1. GPIO Pins konfigurieren (Mit internen Pull-Ups)
+  pinMode(KADENCE_PIN, INPUT_PULLUP);
+  pinMode(INKREMENTAL_PIN, INPUT_PULLUP);
+  pinMode(REFERENCE_PIN, INPUT_PULLUP);
+
+  // Pins fÃ¼r Gangschaltung und MenÃ¼
+  pinMode(GEAR_PLUS, INPUT_PULLUP);
+  pinMode(GEAR_MINUS, INPUT_PULLUP);
+  pinMode(MENU_SWITCH, INPUT_PULLUP);
+  pinMode(MENU_EDIT, INPUT_PULLUP);
+
+  // DRV8833 PWM Pins an die Hardware-KanÃ¤le koppeln
+  ledcSetup(CH_MOTOR_POS, PWM_FREQ, PWM_RES_BITS);
+  ledcSetup(CH_MOTOR_NEG, PWM_FREQ, PWM_RES_BITS);
+  ledcAttachPin(MOTOR_POS_PIN, CH_MOTOR_POS);
+  ledcAttachPin(MOTOR_NEG_PIN, CH_MOTOR_NEG);
+
+  // 2. Hardware-Interrupts aktivieren
+  attachInterrupt(digitalPinToInterrupt(KADENCE_PIN), cadenceISR, RISING);
+  attachInterrupt(digitalPinToInterrupt(INKREMENTAL_PIN), encoderISR, RISING);
+  attachInterrupt(digitalPinToInterrupt(REFERENCE_PIN), referenceISR, RISING);
+
+  // 3. Systemdaten-Modell initialisieren
+  systemData.cadenceRPM = 0;
+  systemData.heartRateBPM = 0;
+  systemData.heartRateBatteryPercent = 100;
+  systemData.pedalPulseDetected = false;
+  systemData.currentGear = 4;
+  systemData.targetMotorPosition = 0;
+  systemData.controlMode = OpMode::HOMING;
+  systemData.speedKmH = 0.0f;
+  systemData.targetSlope = 0.0f;
+  systemData.currentPowerWatt = 0;
+  systemData.hrSensorConnected = false;
+  systemData.btClientConnected = false;
+
+  // --- 4. PULSGURT MIT 90 BPM INITIALISIEREN ---
+  pulsGurtData.hrSensorConnected = false;
+  pulsGurtData.heartRateBPM = 90;
+  pulsGurtData.heartRateAverage = 90;
+  pulsGurtData.batteryPercent = 100;
+  pulsGurtData.bufferIndex = 0;
+  pulsGurtData.hrSum = 900; // 10 EintrÃ¤ge * 90 bpm
+  for (int32_t i = 0; i < HR_BUFFER_SIZE; i++)
+    {
+      pulsGurtData.hrBuffer[i] = 90;
+    }
+
+  // --- 5. MOTORRAMPEN INITIALISIEREN ---
+  gpioData.currentMotorState = MotorState::STOPPED;
+  gpioData.motorStateStartTime = 0;
+  gpioData.activeDirectionPos = true;)
+
+  Serial.println("-> [1] ESP32-Basis & Interrupt-GPIOs erfolgreich konfiguriert.");
+}
+
+void WLAN_init()
+{
+  Serial.println("--- [2] WLAN-Verbindung gestartet ---");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  // Wir warten im Setup maximal 10 Sekunden auf das WLAN,
+  // damit das Ergometer zur Not auch ohne WLAN normal startet.
+  uint32_t attempt = 0;
+  while (WiFi.status() != WL_CONNECTED && attempt < 20)
+    {
+      delay(500);
+      Serial.print(".");
+      attempt++;
+    }
+
+  if (WiFi.status() == WL_CONNECTED)
+    {
+      Serial.println("\n-> WLAN erfolgreich verbunden!");
+      Serial.print("-> IP-Adresse: ");
+      Serial.println(WiFi.localIP());
+
+      // ==========================================
+      // ARDUINO OTA (Over-the-Air) INITIALISIERUNG
+      // ==========================================
+      ArduinoOTA.setHostname(
+          "esp32-ergometer"); // Name, der im VS Code Port-MenÃ¼ erscheint
+      ArduinoOTA.setPassword(
+          "ergometer123"); // Optionales Passwort zur Sicherheit beim Flashen
+
+      ArduinoOTA.onStart(
+          []() { Serial.println("Start des kabellosen Updates..."); });
+
+      ArduinoOTA.onEnd([]() {
+        Serial.println("\nUpdate erfolgreich beendet! ESP32 startet neu...");
+      });
+
+      ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("Fortschritt: %u%%\r", (progress / (total / 100)));
+      });
+
+      ArduinoOTA.onError(
+          [](ota_error_t error) { Serial.printf("Fehler [%u]: ", error); });
+
+      ArduinoOTA.begin();
+      Serial.println("-> OTA-Funk-Updates sind bereit!");
+    }
+  else
+    {
+      Serial.println("\n-> WLAN-Timeout! Starte Ergometer im Offline-Modus.");
+    }
+}
+
+void Display_init()
+{
+  pinMode(PIN_POWER_ON, OUTPUT);
+  digitalWrite(PIN_POWER_ON, HIGH);
+  pinMode(PIN_LCD_BL, OUTPUT);
+  digitalWrite(PIN_LCD_BL, HIGH);
+
+  tft.init();
+  tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+
+  // Gitter des neuen displayData-Structs beim Start leeren
+  for (uint32_t r = 0; r < MATRIX_ROWS; r++)
+    {
+      for (uint32_t c = 0; c < MATRIX_COLS; c++)
+        {
+          strcpy(displayData.displayLabels[r][c], "");
+          displayData.displayValues[r][c] = 0;
+          strcpy(displayData.displayMatrix[r][c], "");
+        }
+    }
+  Serial.println("-> [2] Display initialisiert.");
+}
+
+class MyServerCallbacks : public BLEServerCallbacks
+{
+  void onConnect(BLEServer *pServer)
+  {
+    rxBtConnected = true;
+  }
+
+  void onDisconnect(BLEServer *pServer)
+  {
+    rxBtConnected = false;
+    rxControlMode = 0; // Bei Verbindungsabbruch zurÃ¼ck in den manuellen Modus
+    pServer->startAdvertising();
+  }
+};
+
+class ControlPointCallbacks : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *pCharacteristic)
+  {
+    std::string value = pCharacteristic->getValue();
+    if (value.length() > 0)
+      {
+        uint8_t opcode = value[0];
+
+        // Opcode 0x00: Request Control (Kinomap fordert die Kontrolle an)
+        if (opcode == 0x00)
+          {
+            uint8_t response[] = {0x80, 0x00, 0x01};
+            pControlPointCharacteristic->setValue(response, 3);
+            pControlPointCharacteristic->indicate();
+          }
+
+        // Opcode 0x05: Set Target Power (ERG-Modus / Wattvorgabe)
+        else if (opcode == 0x05 && value.length() >= 3)
+          {
+            rxTargetPower = (uint32_t)(value[1] | (value[2] << 8));
+            rxControlMode = 2; // Modus auf Watt-Steuerung setzen
+
+            uint8_t response[] = {0x80, 0x05, 0x01};
+            pControlPointCharacteristic->setValue(response, 3);
+            pControlPointCharacteristic->indicate();
+          }
+
+        // Opcode 0x11: Set Simulation Parameters (Slope / Steuerungsvorgabe)
+        else if (opcode == 0x11 && value.length() >= 7)
+          {
+            // FTMS-Standard: Slope wird als vorzeichenbehafteter int16 Ã¼bertragen (AuflÃ¶sung 0.1 %)
+            int16_t rawSlope = (int16_t)(value[3] | (value[4] << 8));
+
+            // Umrechnung in echte physikalische float-Prozente (z.B. -15 -> -1.5f)
+            rxTargetSlope = (float)rawSlope / 10.0f;
+            rxControlMode = 1; // Modus auf Strecken-Simulation setzen
+
+            uint8_t response[] = {0x80, 0x11, 0x01};
+            pControlPointCharacteristic->setValue(response, 3);
+            pControlPointCharacteristic->indicate();
+          }
+      }
+  }
+};
+
+void Bluetooth_init()
+{
+  BLEDevice::init("DIY-Smartbike");
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService *pService = pServer->createService(FTMS_SERVICE_UUID);
+
+  pControlPointCharacteristic = pService->createCharacteristic(
+      FTMS_CONTROL_POINT_UUID,
+      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_INDICATE);
+  pControlPointCharacteristic->setCallbacks(new ControlPointCallbacks());
+  pControlPointCharacteristic->addDescriptor(new BLE2902());
+
+  pService->start();
+
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(FTMS_SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
+  pServer->startAdvertising();
+
+  initHeartRateScan();
+
+  // Bike Data Charakteristik erstellen (Notify ist Pflicht, damit die App Daten empfangen kann)
+  pBikeDataCharacteristic = pService->createCharacteristic(
+      FTMS_BIKE_DATA_UUID,
+      BLECharacteristic::PROPERTY_NOTIFY);
+  pBikeDataCharacteristic->addDescriptor(new BLE2902());
+
+  Serial.println("-> Bluetooth FTMS aktiv auf Core 0.");
+}
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\main_prg.cpp
+==============================================================================
+
+#include "modules.h"
+
+void main_prg()
+{
+  // 1. Inputs einlesen -> getInputs.cpp
+  getFTMSInputs();
+  getPulsInputs();
+  getGPIOInputs();
+
+  // 2. Verarbeitung/Berechnung -> processing.cpp
+  calcCtrlMode();
+  calcGear();
+  calcMotorPos();
+
+  // 3. Outputs schreiben -> setOutputs.cpp
+  setGPIOOutputs();
+  setFTMSOutputs();
+
+  // 4. Diagnose ausgeben -> diag_Display.cpp
+  showDiagData();
+}
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\modules.h
+==============================================================================
+
+#ifndef MODULES_H
+#define MODULES_H
+
+#include "systemdata.h"
+
+// ==============================================================================
+inline volatile uint32_t rxControlMode = 0;
+inline volatile uint32_t rxTargetPower = 0;
+inline volatile float rxTargetSlope = 0.0f;
+inline volatile bool rxBtConnected = false;
+
+inline volatile int32_t rxHeartRate = 0;
+inline volatile int32_t rxHrBattery = 100;
+inline volatile bool rxHrConnected = false;
+
+// ==============================================================================
+
+inline const BLEUUID hrServiceUUID("0000180d-0000-1000-8000-00805f9b34fb");
+inline const BLEUUID hrCharUUID("00002a37-0000-1000-8000-00805f9b34fb");
+inline const BLEUUID batServiceUUID("0000180f-0000-1000-8000-00805f9b34fb");
+inline const BLEUUID batCharUUID("00002a19-0000-1000-8000-00805f9b34fb");
+
+inline const BLEUUID ftmsServiceUUID("00001826-0000-1000-8000-00805f9b34fb");
+inline const BLEUUID ftmsControlPointUUID("00002ad9-0000-1000-8000-00805f9b34fb");
+inline const BLEUUID ftmsBikeDataUUID("00002ad2-0000-1000-8000-00805f9b34fb");
+
+// ==============================================================================
+// HARDWARE-INTERRUPTS (ISRs)
+extern void IRAM_ATTR cadenceISR();
+extern void IRAM_ATTR encoderISR();
+extern void IRAM_ATTR referenceISR();
+
+// ==============================================================================
+// Globale Bluetooth-Zeiger fÃ¼r den FTMS-Dienst
+inline BLEServer *pServer = nullptr;
+inline BLECharacteristic *pControlPointCharacteristic = nullptr;
+inline BLECharacteristic *pBikeDataCharacteristic = nullptr;
+// ==============================================================================
+
+// ==============================================================================
+
+// ==============================================================================
+
+// Haupt-Steuerungsschleife
+void main_prg();
+
+// 1. Initialisierung
+void ESP_init();
+void WLAN_init();
+void handleWlanOTA();
+void Bluetooth_init();
+void Display_init();
+
+// 2. Inputs
+void getFTMSInputs();
+void getPulsInputs();
+void getGPIOInputs();
+
+// 3. Processing
+void calcCtrlMode();
+void calcGear();
+void calcMotorPos();
+
+// 4. Outputs
+void setGPIOOutputs();
+void setFTMSOutputs();
+
+// 5. Diagnose & Display
+void showDiagData();
+void showDisplayDiag();
+void setField(int32_t row, int32_t col, const char *label, const char *valueText);
+
+#endif
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\processing.cpp
+==============================================================================
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+#include <Arduino.h>
+
+void calcCtrlMode()
+{
+  uint32_t nowMs = millis();
+
+  // --- FALL A: App (Kinomap) ist aktiv verbunden ---
+  if (systemData.btClientConnected)
+    {
+      if (rxControlMode == 1)
+        {
+          systemData.controlMode = OpMode::SIMU;
+        }
+      else
+        {
+          systemData.controlMode = OpMode::MANUAL;
+        }
+    }
+  // --- FALL B: Pulsgurt ist gekoppelt -> Puls-Training ---
+  else if (systemData.hrSensorConnected)
+    {
+      systemData.controlMode = OpMode::PULS;
+
+      // Regelungsentscheidung exakt alle 10 Sekunden ausfÃ¼hren
+      if (nowMs - systemData.lastPulsRegulatorTime >= REGULATOR_INTERVAL_MS)
+        {
+          systemData.lastPulsRegulatorTime = nowMs;
+
+          // Wir nutzen direkt das stabil gefilterte Signal aus dem Input-Modul!
+          int32_t stableHR = systemData.heartRateBPM_Average;
+
+          if (stableHR > 0)
+            {
+              // Puls zu niedrig âž” Gang hochschalten fÃ¼r mehr Last
+              if (stableHR <= (CARDIO_TARGET_HR - 10))
+                {
+                  if (systemData.currentGear < GEAR_COUNT)
+                    {
+                      systemData.currentGear++;
+                      Serial.printf("[CARDIO] Puls stabil niedrig (%d bpm). Schalte HOCH -> Gang %d\n", stableHR, systemData.currentGear);
+                    }
+                }
+              // Puls zu hoch âž” Gang runterschalten fÃ¼r weniger Last
+              else if (stableHR >= (CARDIO_TARGET_HR + 10))
+                {
+                  if (systemData.currentGear > 1)
+                    {
+                      systemData.currentGear--;
+                      Serial.printf("[CARDIO] Puls stabil hoch (%d bpm). Schalte RUNTER -> Gang %d\n", stableHR, systemData.currentGear);
+                    }
+                }
+            }
+        }
+    }
+  // --- FALL C: Manueller Betrieb (Keine Sensoren) ---
+  else
+    {
+      systemData.controlMode = OpMode::MANUAL;
+    }
+}
+
+// ==============================================================================
+// 2. PHYSIKALISCHE GANG- & BREMSMOMENTENBERECHNUNG (calcGear)
+// ==============================================================================
+void calcGear()
+{
+  if (systemData.currentGear < 1)
+    systemData.currentGear = 1;
+  if (systemData.currentGear > GEAR_COUNT)
+    systemData.currentGear = GEAR_COUNT;
+
+  float activeRatio = GEAR_RATIOS[systemData.currentGear - 1];
+  float wheelCircumferenceMeters = WHEEL_CIRCUMFERENCE_MM / 1000.0f;
+
+  // 1. Virtuelle Geschwindigkeit berechnen
+  if (systemData.cadenceRPM > 0)
+    {
+      systemData.speedKmH = (float)systemData.cadenceRPM * activeRatio * wheelCircumferenceMeters * 0.06f;
+    }
+  else
+    {
+      systemData.speedKmH = 0.0f;
+    }
+
+  // 2. Millimetergenaue Strecke aufaddieren
+  if (systemData.pedalPulseDetected)
+    {
+      float mmThisRotation = activeRatio * WHEEL_CIRCUMFERENCE_MM;
+      systemData.distanceMillimeters += (uint32_t)round(mmThisRotation);
+    }
+
+  // 3. Physikalische Leistungsberechnung am Berg & Drehmomente
+  if (systemData.cadenceRPM > 0 && systemData.speedKmH > 0.0f)
+    {
+      float v_ms = systemData.speedKmH / 3.6f;
+      float total_power = 0.0f;
+
+      if (systemData.controlMode == OpMode::SIMU)
+        {
+          float slope_decimal = systemData.targetSlope / 100.0f;
+
+          float p_gravity = TOTAL_SYSTEM_WEIGHT_KG * GRAVITY_G * slope_decimal * v_ms;
+          float p_roll = TOTAL_SYSTEM_WEIGHT_KG * GRAVITY_G * CR_ROLL_RESIST * v_ms;
+          float p_aero = CW_AERO * (v_ms * v_ms * v_ms);
+
+          total_power = p_gravity + p_roll + p_aero;
+
+          if (total_power < 50.0f)
+            total_power = 50.0f;
+          if (total_power > 450.0f)
+            total_power = 450.0f;
+          systemData.targetPowerWatt = (int32_t)round(total_power);
+        }
+      else
+        {
+          systemData.targetPowerWatt = 50 + ((systemData.currentGear - 1) * 25);
+          total_power = (float)systemData.targetPowerWatt;
+        }
+
+      // Drehmoment an der Kurbel (M = P * 60 / (2 * pi * RPM))
+      systemData.targetTorqueNm = (total_power * 60.0f) / (2.0f * PI * (float)systemData.cadenceRPM);
+    }
+  else
+    {
+      systemData.targetPowerWatt = 0;
+      systemData.targetTorqueNm = 0.0f;
+    }
+
+  if (systemData.targetTorqueNm > 80.0f)
+    {
+      systemData.targetTorqueNm = 80.0f;
+    }
+}
+
+// ==============================================================================
+// 3. MOTORPOSITIONIERUNGS-BERECHNUNG (calcMotorPos)
+// ==============================================================================
+void calcMotorPos()
+// TemporÃ¤rer Platzhalter: Lineares Mapping auf deine 24 Motorstufen (MOTOR_ABSPOS)
+// Wir nehmen an, dass 0 Nm = Stufe 1 (0 Schritte) und 80 Nm = Stufe 24 (680 Schritte) entspricht.
+{
+  float normalizedTorque = systemData.targetTorqueNm / 80.0f;
+  int32_t targetLevel = (int32_t)round(normalizedTorque * (float)(MOTOR_POS_COUNT - 1)) + 1;
+
+  if (targetLevel < 1)
+    targetLevel = 1;
+  if (targetLevel > MOTOR_POS_COUNT)
+    targetLevel = MOTOR_POS_COUNT;
+
+  systemData.targetMotorPosition = MOTOR_ABSPOS[targetLevel - 1];
+}
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\secrets.h
+==============================================================================
+
+#ifndef SECRETS_H
+#define SECRETS_H
+
+// Deine WLAN-Zugangsdaten (Trage hier morgen deine echten Daten ein)
+const char *ssid = "DEIN_WLAN_NAME";
+const char *password = "DEIN_WLAN_PASSWORT";
+
+#endif
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\setOutputs.cpp
+==============================================================================
+
+#include "config.h"
+#include "modules.h"
+#include "system_data.h"
+#include <Arduino.h>
+
+// Hilfsfunktion: Setzt die PWM-Geschwindigkeit mit einer linearen 100ms-Rampe
+void driveMotorPWM(bool forward, bool stopRequest)
+{
+  uint32_t elapsed = millis() - motorStateStartTime;
+  uint32_t duty = 0;
+
+  if (stopRequest)
+    {
+      if (currentMotorState != MotorState::DECEL && currentMotorState != MotorState::STOPPED)
+        {
+          currentMotorState = MotorState::DECEL;
+          motorStateStartTime = millis();
+          elapsed = 0;
+        }
+
+      if (currentMotorState == MotorState::DECEL)
+        {
+          if (elapsed < 100)
+            {
+              duty = 255 - (elapsed * 255 / 100); // Bremse von 100% auf 0%
+            }
+          else
+            {
+              duty = 0;
+              currentMotorState = MotorState::STOPPED;
+            }
+        }
+    }
+  else
+    {
+      activeDirectionPos = forward;
+
+      if (currentMotorState == MotorState::STOPPED)
+        {
+          currentMotorState = MotorState::ACCEL;
+          motorStateStartTime = millis();
+          elapsed = 0;
+        }
+
+      if (currentMotorState == MotorState::ACCEL)
+        {
+          if (elapsed < 100)
+            {
+              duty = (elapsed * 255 / 100); // Sanft beschleunigen von 0% auf 100%
+            }
+          else
+            {
+              duty = 255;
+              currentMotorState = MotorState::RUNNING;
+            }
+        }
+      else if (currentMotorState == MotorState::RUNNING)
+        {
+          duty = 255; // Volle Kraft
+        }
+    }
+
+  // PWM-Signale an die DRV8833-KanÃ¤le senden
+  if (activeDirectionPos)
+    {
+      ledcWrite(CH_MOTOR_NEG, 0);
+      ledcWrite(CH_MOTOR_POS, duty);
+    }
+  else
+    {
+      ledcWrite(CH_MOTOR_POS, 0);
+      ledcWrite(CH_MOTOR_NEG, duty);
+    }
+}
+
+// Die verfeinerte, prÃ¤zise Motor-Ablaufsteuerung
+static bool isBacklashCorrectionActive = false;
+static int32_t backlashTargetPos = 0;
+
+void setGPIOOutputs()
+{
+  int32_t actualPos = gpioData.actualMotorPosition;
+  int32_t finalTarget = gpioData.targetMotorPosition;
+
+  // Absicherung des Zielbereichs
+  if (finalTarget < MOTOR_ABSPOS[0])
+    finalTarget = MOTOR_ABSPOS[0];
+  if (finalTarget > MOTOR_ABSPOS[MOTOR_POS_COUNT - 1])
+    finalTarget = MOTOR_ABSPOS[MOTOR_POS_COUNT - 1];
+
+  // --- FALL 1: Referenzfahrt (Homing) ---
+  if (systemData.controlMode == OpMode::HOMING)
+    {
+      if (gpioData.referenceSwitchPressed == false)
+        {
+          driveMotorPWM(false, false); // Sanft rÃ¼ckwÃ¤rts suchen
+        }
+      else
+        {
+          driveMotorPWM(false, true); // Sanft abbremsen
+          if (gpioData.currentMotorState == MotorState::STOPPED)
+            {
+              systemData.controlMode = OpMode::MANUAL;
+              systemData.currentGear = 4;
+              Serial.println("-> Homing erfolgreich abgeschlossen!");
+            }
+        }
+      return;
+    }
+
+  // --- FALL 2: RegulÃ¤rer Betrieb (Zustandsmaschine) ---
+
+  // Zustand A: Getriebespiel-Korrektur lÃ¤uft aktiv im Hintergrund
+  if (gpioData.currentMotorState == MotorState::BACKLASH)
+    {
+      if (actualPos > backlashTargetPos)
+        {
+          driveMotorPWM(false, false); // Fahre aktiv weiter rÃ¼ckwÃ¤rts
+        }
+      else
+        {
+          driveMotorPWM(false, true); // Ziel-Ãœberlauf erreicht -> sanft abbremsen
+
+          if (gpioData.currentMotorState == MotorState::STOPPED)
+            {
+              // RÃ¼ckwÃ¤rts-Ãœberlauf beendet!
+              // Jetzt schalten wir den Zustand wieder frei, damit der Motor regulÃ¤r
+              // und spielfrei von hinten (in positive Richtung) anfahren kann.
+              Serial.println("[MOTOR] RÃ¼ckwÃ¤rts-Ãœberlauf beendet. Fahre jetzt spielfrei vorwÃ¤rts an.");
+            }
+        }
+      return;
+    }
+
+  // Zustand B: Berechne den aktuellen Positionsfehler
+  int32_t positionError = finalTarget - actualPos;
+
+  if (positionError > 0)
+    {
+      // VorwÃ¤rtsfahrt (schwerer): Direkt und ohne Umwege anfahren
+      driveMotorPWM(true, false);
+    }
+  else if (positionError < 0)
+    {
+      // RÃ¼ckwÃ¤rtsfahrt (leichter): Getriebespiel-Kompensation einleiten!
+      // Berechne die temporÃ¤re Ãœberlauf-Position (Sollwert minus 32 Schritte)
+      backlashTargetPos = finalTarget - (int32_t)MOTOR_NEG_RELPOS;
+      if (backlashTargetPos < 0)
+        backlashTargetPos = 0;
+
+      // Wir wechseln aktiv in den BACKLASH-Zustand und bremsen die aktuelle Bewegung ab
+      gpioData.currentMotorState = MotorState::BACKLASH;
+      driveMotorPWM(false, true);
+      Serial.printf("[MOTOR] Getriebespiel-Zustand aktiv! Fahre Ã¼berlaufend zurÃ¼ck auf: %d\n", backlashTargetPos);
+    }
+  else
+    {
+      // Zielpunkt exakt und spielfrei erreicht -> Sanft abbremsen und Haltestrom halten
+      driveMotorPWM(true, true);
+    }
+}
+
+void setFTMSOutputs()
+{
+  // Wir senden nur Daten, wenn ein Smartphone/Tablet aktiv verbunden ist
+  if (!systemData.btClientConnected || pBikeDataCharacteristic == nullptr)
+    {
+      return;
+    }
+
+  static uint32_t lastTxTime = 0;
+  if (millis() - lastTxTime >= 1000) // Exakt jede Sekunde senden
+    {
+      lastTxTime = millis();
+
+      // FTMS Indoor Bike Data Format (Standard-Definition):
+      // Byte 0-1: Flags (bestimmen, welche Daten gesendet werden)
+      //   Bit 0: 0 = More Data present (wir senden alles in einem Paket)
+      //   Bit 1: 1 = Average Speed present (nein, wir senden nur die aktuelle)
+      //   Bit 2: 1 = Instantaneous Cadence present (Ja! Trittfrequenz ist dabei)
+      //   Bit 3: 1 = Total Distance present (optional)
+      //   Bit 4: 1 = Resistance Level present (optional)
+      //   Bit 5: 1 = Instantaneous Power present (Ja! Leistung ist dabei)
+      // Flags-Wert: Bit 2 (Cadence) und Bit 5 (Power) aktiv -> 0x0004 | 0x0020 = 0x0024
+      // Da wir die Geschwindigkeit immer mitsenden (ist Standard, wenn Flags Bit 0 = 0):
+
+      uint8_t txBuffer[8];
+
+      // 1. Flags eintragen (Byte 0 & 1)
+      uint16_t flags = 0x0024;
+      txBuffer[0] = (uint8_t)(flags & 0xFF);
+      txBuffer[1] = (uint8_t)((flags >> 8) & 0xFF);
+
+      // 2. Geschwindigkeit eintragen (Byte 2 & 3)
+      // FTMS-Standard verlangt km/h mit einer AuflÃ¶sung von 0.01 (km/h * 100)
+      uint16_t speedVal = (uint16_t)(systemData.speedKmH * 100.0f);
+      txBuffer[2] = (uint8_t)(speedVal & 0xFF);
+      txBuffer[3] = (uint8_t)((speedVal >> 8) & 0xFF);
+
+      // 3. Trittfrequenz eintragen (Byte 4 & 5)
+      // FTMS-Standard verlangt Kurbelumdrehungen mit einer AuflÃ¶sung von 0.5 (RPM * 2)
+      uint16_t cadenceVal = (uint16_t)(systemData.cadenceRPM * 2);
+      txBuffer[4] = (uint8_t)(cadenceVal & 0xFF);
+      txBuffer[5] = (uint8_t)((cadenceVal >> 8) & 0xFF);
+
+      // 4. Leistung eintragen (Byte 6 & 7)
+      // FTMS-Standard verlangt Watt als vorzeichenbehafteten 16-Bit Wert (Direktwert)
+      int16_t powerVal = (int16_t)systemData.targetPowerWatt; // Oder Ist-Watt, sobald berechnet
+      txBuffer[6] = (uint8_t)(powerVal & 0xFF);
+      txBuffer[7] = (uint8_t)((powerVal >> 8) & 0xFF);
+
+      // Daten an den Bluetooth-Stack Ã¼bergeben und an Kinomap abschicken!
+      pBikeDataCharacteristic->setValue(txBuffer, 8);
+      pBikeDataCharacteristic->notify(); // LÃ¶st das Senden auf Core 0 aus!
+    }
+}
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\system_data.h
+==============================================================================
+
+#ifndef SYSTEM_DATA_H
+#define SYSTEM_DATA_H
+
+#include <Arduino.h>
+
+const uint32_t MATRIX_ROWS = 21;
+const uint32_t MATRIX_COLS = 5;
+const uint32_t COL_CHAR_LIMIT = 10;
+
+// Die neuen, sprechenden Betriebsmodi des Smartbikes
+enum class OpMode : int32_t {
+  HOMING = 0, // Referenzfahrt nach dem Start
+  MANUAL = 1, // Manueller Modus Ã¼ber Gangschaltung
+  PULS = 2,   // Puls-Training (Cardio-Modus)
+  SIMU = 3    // Interaktive Strecken-Simulation (Kinomap)
+};
+
+// ZustÃ¤nde fÃ¼r die sanfte 100ms-Motor-Rampe
+enum class MotorState : int32_t {
+  STOPPED = 0,
+  ACCEL = 1,
+  RUNNING = 2,
+  DECEL = 3,
+  BACKLASH = 4
+};
+
+// ==============================================================================
+// 1. SCHNITTSTELLE: Bluetooth FTMS (Kinomap)
+// ==============================================================================
+struct FTMSServiceData
+{
+  bool btClientConnected;   // Verbindung zur App aktiv
+  float targetSlope;        // Soll-Steigung von der App in %
+  uint32_t targetPowerWatt; // Soll-Leistung von der App im ERG-Modus
+  OpMode rxControlMode;     // Von der App angeforderter Modus (Simu/Manual)
+};
+
+// ==============================================================================
+// 2. SCHNITTSTELLE: BLE Pulsgurt (Heart Rate Monitor)
+// ==============================================================================
+struct PulsGurtData
+{
+  bool hrSensorConnected;    // Verbindung zum Gurt aktiv
+  uint32_t heartRateBPM;     // Aktueller Live-Puls (Rohwert)
+  uint32_t heartRateAverage; // Gefilterter Puls Ã¼ber 10 Sekunden
+  uint32_t batteryPercent;   // Batterieladung in %
+
+  uint32_t hrBuffer[HR_BUFFER_SIZE];
+  uint32_t bufferIndex;
+  uint32_t hrSum;
+};
+
+// ==============================================================================
+// 3. SCHNITTSTELLE: Physische GPIOs (Hardware-Inputs & -Outputs)
+// ==============================================================================
+struct GPIOHardwareData
+{
+  // Live-ZustÃ¤nde der physikalischen Pins (Wichtig fÃ¼r Diagnose und Logik)
+  bool cadenceRawPulse;        // Momentaner Zustand von GPIO 10 (Reed-Sensor)
+  bool encoderRawPulse;        // Momentaner Zustand von GPIO 11 (Motor-Inkrementalgeber)
+  bool referenceSwitchPressed; // Momentaner Zustand von GPIO 12 (Referenzschalter, entprellt/aktiviert)
+
+  bool pedalPulseDetected;      // Signalisiert, dass ein Kurbel-Umdrehungs-Impuls erkannt wurde (ISR-Trigger)
+  uint32_t actualMotorPosition; // Aktuell gezÃ¤hlte Schrittzahl des Inkrementalgebers (Ist-Wert)
+  uint32_t targetMotorPosition; // Anzufahrende Ziel-Schrittzahl des Stellmotors (Soll-Wert)
+
+  bool gpioData.plusBtnPressed;
+  bool gpioData.minusBtnPressed;
+  uint32_t lastGearChangeTime;
+
+  MotorState currentMotorState;
+  uint32_t motorStateStartTime;
+  bool activeDirectionPos;
+};
+
+// ==============================================================================
+// 4. KERN: Berechnete Ergometer-Fahrdaten (Fahrphysik & Status)
+// ==============================================================================
+struct ErgometerData
+{
+  OpMode controlMode;           // Aktiver Steuerungsmodus (Homing, Manual, Puls, Simu)
+  uint32_t currentGear;         // Aktueller virtueller Gang (1 bis 13)
+  float speedKmH;               // Berechnete virtuelle Geschwindigkeit in km/h
+  float targetTorqueNm;         // Berechnetes Soll-Bremsmoment in Nm
+  uint32_t currentPowerWatt;    // Berechnete / getretene Leistung in Watt
+  uint32_t distanceMillimeters; // Gesamtstrecke in Millimetern
+
+  uint32_t lastPulsRegulatorTime = 0;
+};
+
+// ==============================================================================
+// 5. DIAGNOSE & VISUALISIERUNG: TFT Onboard-Display
+// ==============================================================================
+struct DisplayData
+{
+  // Speicher fÃ¼r Labels, z.B. "RPM" (Max 5 Zeichen + Nullterminator)
+  char displayLabels[MATRIX_ROWS][MATRIX_COLS][6];
+
+  // Speicher fÃ¼r Ganzzahlen-Werte, die den Labels zugeordnet sind
+  uint32_t displayValues[MATRIX_ROWS][MATRIX_COLS];
+
+  // Der fertige, formatierte String, den das Display zeichnet
+  char displayMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1];
+};
+
+// ==============================================================================
+// INLINE-DEFINITIONEN (Echte Definitionen direkt im Header!)
+// ==============================================================================
+inline FTMSServiceData ftmsData;
+inline PulsGurtData pulsGurtData;
+inline GPIOHardwareData gpioData;
+inline ErgometerData systemData;
+inline DisplayData displayData;
+
+#endif
+
+
+
+==============================================================================
+FILE: C:\Users\alexdrik\Documents\ESP32\Task_Config\Task_Config.ino
+==============================================================================
+
+#include "modules.h"
+
+TaskHandle_t ErgometerTask;
+TaskHandle_t WirelessTask; // Umbenannt! (vorher WlanUpdateTask)
+
+// Vorab-Deklarationen fÃ¼r den Compiler
+void ErgometerLoop(void *pvParameters);
+void wirelessConnectivityLoop(void *pvParameters);
+void handleHeartRateConnection();
+
+/*
+Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino -Exclude .git*, *.gitignore* | ForEach-Object {Write-Output "==============================================================================`nFILE: $($_.FullName)`n==============================================================================`n"; Get-Content $_.FullName; Write-Output "`n`n" } | Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8
+Get-Content Gesamter_Code.txt | Set-Clipboard
+
+todo:
+Code umbauen auf: "float calculatePower(float slope, float speed, float weight);"
+Spaghetti-Code entflechten und DatenfluÃŸ sauberer darstellen
+Debugging Ã¼ber Display definieren und ausgeben
+serial.print durch WLAN.print austauschen
+Aufrufhierarchie mit Doxygen ausprobieren
+
+ * ==============================================================================
+ *                         PROGRAMMAUFRUF-HIERARCHIE
+ * ==============================================================================
+ * [Core 0] - Funkverbindungen, Netzwerk & System (Hintergrund-Tasks)
+ *   +-- wirelessConnectivityLoop()         (Eigener Task auf Core 0, Intervall: 100ms)
+ *         |-- handleWlanOTA()              (Lauscht auf Core 0 vÃ¶llig autark nach OTA-Updates)
+ *         +-- handleHeartRateConnection()  (Verwaltet die Verbindung zum BLE-Pulsgurt)
+ * ------------------------------------------------------------------------------
+ * [Core 1] - Applikation & Hardware-Echtzeitsteuerung (Haupt-Tasks)
+ *   +-- setup()                             (Einstiegspunkt fÃ¼r Core 1)
+ *   |     |-- ESP_init()                    (Basis-GPIOs konfigurieren & Variablen nullen)
+ *   |     |-- Display_init()                (Display-Hardware starten & Gitter leeren)
+ *   |     |-- WLAN_init()                   (WLAN-Verbindung starten & OTA initialisieren)
+ *   |     |-- Bluetooth_init()              (BLE-Server starten, FTMS & HR-Scan aktivieren)
+ *   |     |-- xTaskCreatePinned...          (ErgometerTask erstellen und an Core 1 binden)
+ *   |     +-- xTaskCreatePinned...          (WirelessTask erstellen und an Core 0 binden)
+ *   +-- loop()                              (Leerlauf-Sicherungs-Task / SchlÃ¤ft fÃ¼r Watchdog)
+ *   +-- ErgometerLoop()                     (Hauptschleife auf Core 1, Intervall: 10ms)
+ *         +-- main_prg()                    (Das zentrale Steuerungsprogramm)
+ *               |-- [INPUTS EINLESEN]
+ *               |     |-- getFTMSInputs()   (EmpfÃ¤ngt Steigungsdaten von Kinomap)
+ *               |     |-- getPulsInputs()   (Gefilterten Puls & Batteriewerte einlesen)
+ *               |     +-- getGPIOInputs()   (Physische Taster & Ist-Motorposition einlesen)
+ *               |-- [VERARBEITUNG & BERECHNUNG]
+ *               |     |-- calcCtrlMode()    (Regelungsmodus bestimmen: MANUAL, PULS, SIMU)
+ *               |     |-- calcGear()        (Geschwindigkeit, Strecke & Soll-Torque berechnen)
+ *               |     +-- calcMotorPos()    (Soll-Drehmoment in Soll-Motorschritte mappen)
+ *               |-- [OUTPUTS SCHREIBEN]
+ *               |     |-- setGPIOOutputs()  (Stellmotor mit Backlash-Kompensation & Rampen ansteuern)
+ *               |     +-- setFTMSOutputs()  (Live-Fahrdaten Ã¼ber Bluetooth an Kinomap senden)
+ *               |-- [DIAGNOSE]
+ *                     +-- showDiagData()    (Echtzeit-Matrix & TFT-Display aktualisieren)
+ * ==============================================================================
+ */
+
+void setup()
+{
+  ESP_init();
+  Display_init();
+  WLAN_init();
+  Bluetooth_init();
+
+  // Ergometer an Core 1 pinnen (Echtzeitsteuerung)
+  xTaskCreatePinnedToCore(ErgometerLoop, "ErgometerTask", 10000, NULL, 1, &ErgometerTask, 1);
+
+  // Gesamte kabellose Kommunikation an Core 0 pinnen (WLAN & Bluetooth)
+  xTaskCreatePinnedToCore(wirelessConnectivityLoop, "WirelessTask", 4000, NULL, 1, &WirelessTask, 0);
+}
+
+void loop()
+{
+  vTaskDelay(pdMS_TO_TICKS(1000));
+}
+
+// Task 1: LÃ¤uft auf Core 1 (Reiner Echtzeit-Ergometer-Kram)
+void ErgometerLoop(void *pvParameters)
+{
+  Serial.print("Ergometer-Task gestartet auf Core: ");
+  Serial.println(xPortGetCoreID());
+  for (;;)
+    {
+      main_prg();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+// Task 2: LÃ¤uft im Hintergrund auf Core 0 (WLAN OTA & BLE Pulsgurt)
+void wirelessConnectivityLoop(void *pvParameters)
+{
+  Serial.print("Wireless-Task gestartet auf Core: ");
+  Serial.println(xPortGetCoreID());
+  for (;;)
+    {
+      handleWlanOTA();                // Lauscht auf Core 0 nach OTA-Updates
+      handleHeartRateConnection();    // Behandelt Pulsgurt-Verbindungen auf Core 0
+      vTaskDelay(pdMS_TO_TICKS(100)); // 100ms CPU-Entlastung fÃ¼r Core 0
+    }
+}
+
+
+
