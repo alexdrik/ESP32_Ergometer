@@ -4,6 +4,7 @@
 #include <Arduino.h>
 
 extern volatile uint32_t isrEncoderCount;
+extern BLECharacteristic *pBikeDataCharacteristic;
 
 // PWM Kanal-Zuweisung
 const uint8_t CH_MOTOR_POS = 0;
@@ -169,5 +170,55 @@ void setGPIOOutputs()
 
 void setFTMSOutputs()
 {
-  // Bluetooth-Daten senden folgt
+  // Wir senden nur Daten, wenn ein Smartphone/Tablet aktiv verbunden ist
+  if (!systemData.btClientConnected || pBikeDataCharacteristic == nullptr)
+    {
+      return;
+    }
+
+  static uint32_t lastTxTime = 0;
+  if (millis() - lastTxTime >= 1000) // Exakt jede Sekunde senden
+    {
+      lastTxTime = millis();
+
+      // FTMS Indoor Bike Data Format (Standard-Definition):
+      // Byte 0-1: Flags (bestimmen, welche Daten gesendet werden)
+      //   Bit 0: 0 = More Data present (wir senden alles in einem Paket)
+      //   Bit 1: 1 = Average Speed present (nein, wir senden nur die aktuelle)
+      //   Bit 2: 1 = Instantaneous Cadence present (Ja! Trittfrequenz ist dabei)
+      //   Bit 3: 1 = Total Distance present (optional)
+      //   Bit 4: 1 = Resistance Level present (optional)
+      //   Bit 5: 1 = Instantaneous Power present (Ja! Leistung ist dabei)
+      // Flags-Wert: Bit 2 (Cadence) und Bit 5 (Power) aktiv -> 0x0004 | 0x0020 = 0x0024
+      // Da wir die Geschwindigkeit immer mitsenden (ist Standard, wenn Flags Bit 0 = 0):
+      uint16_t flags = 0x0024;
+
+      uint8_t txBuffer[8];
+
+      // 1. Flags eintragen (Byte 0 & 1)
+      txBuffer[0] = (uint8_t)(flags & 0xFF);
+      txBuffer[1] = (uint8_t)((flags >> 8) & 0xFF);
+
+      // 2. Geschwindigkeit eintragen (Byte 2 & 3)
+      // FTMS-Standard verlangt km/h mit einer Auflösung von 0.01 (km/h * 100)
+      uint16_t speedVal = (uint16_t)(systemData.speedKmH * 100.0f);
+      txBuffer[2] = (uint8_t)(speedVal & 0xFF);
+      txBuffer[3] = (uint8_t)((speedVal >> 8) & 0xFF);
+
+      // 3. Trittfrequenz eintragen (Byte 4 & 5)
+      // FTMS-Standard verlangt Kurbelumdrehungen mit einer Auflösung von 0.5 (RPM * 2)
+      uint16_t cadenceVal = (uint16_t)(systemData.cadenceRPM * 2);
+      txBuffer[4] = (uint8_t)(cadenceVal & 0xFF);
+      txBuffer[5] = (uint8_t)((cadenceVal >> 8) & 0xFF);
+
+      // 4. Leistung eintragen (Byte 6 & 7)
+      // FTMS-Standard verlangt Watt als vorzeichenbehafteten 16-Bit Wert (Direktwert)
+      int16_t powerVal = (int16_t)systemData.targetPowerWatt; // Oder Ist-Watt, sobald berechnet
+      txBuffer[6] = (uint8_t)(powerVal & 0xFF);
+      txBuffer[7] = (uint8_t)((powerVal >> 8) & 0xFF);
+
+      // Daten an den Bluetooth-Stack übergeben und an Kinomap abschicken!
+      pBikeDataCharacteristic->setValue(txBuffer, 8);
+      pBikeDataCharacteristic->notify(); // Löst das Senden auf Core 0 aus!
+    }
 }

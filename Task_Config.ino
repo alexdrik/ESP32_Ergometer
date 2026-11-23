@@ -1,46 +1,58 @@
 #include "modules.h"
 
+TaskHandle_t ErgometerTask;
+TaskHandle_t WirelessTask; // Umbenannt! (vorher WlanUpdateTask)
+
+// Vorab-Deklarationen für den Compiler
+void ErgometerLoop(void *pvParameters);
+void wirelessConnectivityLoop(void *pvParameters);
+void handleHeartRateConnection();
+
 /*
 Get-ChildItem -Recurse -Include *.cpp, *.h, *.ino | ForEach-Object {Write-Output "==============================================================================`nFILE: $($_.FullName)`n==============================================================================`n"; Get-Content $_.FullName;Write-Output "`n`n" } | Out-File -FilePath "Gesamter_Code.txt" -Encoding utf8
 Get-Content Gesamter_Code.txt | Set-Clipboard
 
-/*
+todo:
+Code umbauen auf: "float calculatePower(float slope, float speed, float weight);"
+Spaghetti-Code entflechten und Datenfluß sauberer darstellen
+Debugging übr Display definieren und ausgeben
+serial.print durch WLAN.print austauschen
+Aufrufhierarchie mit Doxygen ausprobieren
+
  * ==============================================================================
  *                         PROGRAMMAUFRUF-HIERARCHIE
  * ==============================================================================
- * [Core 0] - System, Netzwerk & Connectivity (Hintergrund-Tasks)
- *   +-- WLAN_init()                (WLAN-Verbindung herstellen & OTA initialisieren)
- *   +-- Bluetooth_init()           (BLE-Server starten & FTMS-Dienste bereitstellen)
- *   +-- WlanUpdateLoop()           (Eigener Task auf Core 0, Intervall: 100ms)
- *         +-- WLAN_Update()        (Lauscht auf Core 0 völlig autark nach OTA-Updates)
+ * [Core 0] - Funkverbindungen, Netzwerk & System (Hintergrund-Tasks)
+ *   +-- wirelessConnectivityLoop()         (Eigener Task auf Core 0, Intervall: 100ms)
+ *         |-- handleWlanOTA()              (Lauscht auf Core 0 völlig autark nach OTA-Updates)
+ *         +-- handleHeartRateConnection()  (Verwaltet die Verbindung zum BLE-Pulsgurt)
  * ------------------------------------------------------------------------------
- * [Core 1] - Applikation & Hardware-Steuerung (Echtzeit-Haupt-Tasks)
- *   +-- setup()                    (Einstiegspunkt für Core 1)
- *   |     +-- ESP_init()           (Basis-GPIOs konfigurieren & Variablen nullen)
- *   |     +-- initOnboardDisplay() (Display-Hardware starten & Gitter leeren)
- *   |     +-- xTaskCreatePinned... (ErgometerTask erstellen und an Core 1 binden)
- *   |     +-- xTaskCreatePinned... (WlanUpdateTask erstellen und an Core 0 binden)
- *   +-- loop()                     (Leerlauf-Sicherungs-Task / Schläft für Watchdog)
- *   +-- ErgometerLoop()            (Hauptschleife auf Core 1, Intervall: 10ms)
- *         +-- main_prg()           (Das zentrale Steuerungsprogramm)
+ * [Core 1] - Applikation & Hardware-Echtzeitsteuerung (Haupt-Tasks)
+ *   +-- setup()                             (Einstiegspunkt für Core 1)
+ *   |     |-- ESP_init()                    (Basis-GPIOs konfigurieren & Variablen nullen)
+ *   |     |-- Display_init()                (Display-Hardware starten & Gitter leeren)
+ *   |     |-- WLAN_init()                   (WLAN-Verbindung starten & OTA initialisieren)
+ *   |     |-- Bluetooth_init()              (BLE-Server starten, FTMS & HR-Scan aktivieren)
+ *   |     |-- xTaskCreatePinned...          (ErgometerTask erstellen und an Core 1 binden)
+ *   |     +-- xTaskCreatePinned...          (WirelessTask erstellen und an Core 0 binden)
+ *   +-- loop()                              (Leerlauf-Sicherungs-Task / Schläft für Watchdog)
+ *   +-- ErgometerLoop()                     (Hauptschleife auf Core 1, Intervall: 10ms)
+ *         +-- main_prg()                    (Das zentrale Steuerungsprogramm)
  *               |-- [INPUTS EINLESEN]
- *               |     +-- getFTMSInputs()   (Vorgaben von Bluetooth Fitness-Apps holen)
- *               |     +-- getPulsInputs()   (Pulsdaten von Sensor/Brustgurt lesen)
- *               |     +-- getGPIOInputs()   (Physische Taster & Gangschaltung einlesen)
+ *               |     |-- getFTMSInputs()   (Empfängt Steigungsdaten von Kinomap)
+ *               |     |-- getPulsInputs()   (Gefilterten Puls & Batteriewerte einlesen)
+ *               |     +-- getGPIOInputs()   (Physische Taster & Ist-Motorposition einlesen)
  *               |-- [VERARBEITUNG & BERECHNUNG]
- *               |     +-- calcCtrlMode()    (Regelungsmodus bestimmen: Watt/Manuell)
- *               |     +-- calcGear()        (Virtuellen Gang berechnen)
- *               |     +-- calcMotorPos()    (Stellmotor-Sollposition ermitteln)
+ *               |     |-- calcCtrlMode()    (Regelungsmodus bestimmen: MANUAL, PULS, SIMU)
+ *               |     |-- calcGear()        (Geschwindigkeit, Strecke & Soll-Torque berechnen)
+ *               |     +-- calcMotorPos()    (Soll-Drehmoment in Soll-Motorschritte mappen)
  *               |-- [OUTPUTS SCHREIBEN]
- *               |     +-- setGPIOOutputs()  (Stellmotor für den Widerstand ansteuern)
- *               |     +-- setFTMSOutputs()  (Trainingsdaten über Bluetooth senden)
+ *               |     |-- setGPIOOutputs()  (Stellmotor mit Backlash-Kompensation & Rampen ansteuern)
+ *               |     +-- setFTMSOutputs()  (Live-Fahrdaten über Bluetooth an Kinomap senden)
  *               |-- [DIAGNOSE]
  *                     +-- showDiagData()    (Echtzeit-Matrix & TFT-Display aktualisieren)
  * ==============================================================================
  */
-
-TaskHandle_t ErgometerTask;
-TaskHandle_t WlanUpdateTask;
 
 void setup()
 {
@@ -49,23 +61,23 @@ void setup()
   WLAN_init();
   Bluetooth_init();
 
-  // Ergometer an Core 1 pinnen
-  xTaskCreatePinnedToCore(ErgometerLoop, "ErgometerTask", 10000, NULL, 1,
-                          &ErgometerTask, 1);
+  // Ergometer an Core 1 pinnen (Echtzeitsteuerung)
+  xTaskCreatePinnedToCore(ErgometerLoop, "ErgometerTask", 10000, NULL, 1, &ErgometerTask, 1);
 
-  // WLAN-Update an Core 0 pinnen (Priorität 1, Core 0)
-  xTaskCreatePinnedToCore(WlanUpdateLoop, "WlanUpdateTask", 4000, NULL, 1,
-                          &WlanUpdateTask, 0);
+  // Gesamte kabellose Kommunikation an Core 0 pinnen (WLAN & Bluetooth)
+  xTaskCreatePinnedToCore(wirelessConnectivityLoop, "WirelessTask", 4000, NULL, 1, &WirelessTask, 0);
 }
 
-void loop() { vTaskDelay(pdMS_TO_TICKS(1000)); }
+void loop()
+{
+  vTaskDelay(pdMS_TO_TICKS(1000));
+}
 
-// Task 1: Läuft auf Core 1 (Reiner Ergometer-Kram)
+// Task 1: Läuft auf Core 1 (Reiner Echtzeit-Ergometer-Kram)
 void ErgometerLoop(void *pvParameters)
 {
   Serial.print("Ergometer-Task gestartet auf Core: ");
   Serial.println(xPortGetCoreID());
-
   for (;;)
     {
       main_prg();
@@ -73,30 +85,15 @@ void ErgometerLoop(void *pvParameters)
     }
 }
 
-// Task 2: Läuft im Hintergrund auf Core 0 (Nur WLAN-Updates)
-void WlanUpdateLoop(void *pvParameters)
+// Task 2: Läuft im Hintergrund auf Core 0 (WLAN OTA & BLE Pulsgurt)
+void wirelessConnectivityLoop(void *pvParameters) // Umbenannt!
 {
-  Serial.print("WLAN-Update-Task gestartet auf Core: ");
+  Serial.print("Wireless-Task gestartet auf Core: ");
   Serial.println(xPortGetCoreID());
   for (;;)
     {
-      WLAN_Update(); // Lauscht auf Core 0 nach Updates
-      vTaskDelay(pdMS_TO_TICKS(
-          100)); // Muss nicht so oft laufen (100ms reicht völlig!)
-    }
-}
-
-// Deklaration der internen Funktion aus init_sys.cpp
-void handleHeartRateConnection();
-
-void WlanUpdateLoop(void *pvParameters)
-{
-  Serial.print("WLAN & BLE Client-Task gestartet auf Core: ");
-  Serial.println(xPortGetCoreID());
-  for (;;)
-    {
-      WLAN_Update();                  // Lauscht auf Core 0 nach OTA-Updates
+      handleWlanOTA();                // Umbenannt! Lauscht auf Core 0 nach OTA-Updates
       handleHeartRateConnection();    // Behandelt Pulsgurt-Verbindungen auf Core 0
-      vTaskDelay(pdMS_TO_TICKS(100)); // 100ms CPU-Entlastung
+      vTaskDelay(pdMS_TO_TICKS(100)); // 100ms CPU-Entlastung für Core 0
     }
 }

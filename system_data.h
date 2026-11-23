@@ -15,38 +15,84 @@ enum class OpMode : int32_t {
   SIMU = 3    // Interaktive Strecken-Simulation (Kinomap)
 };
 
-struct ErgometerData
+// ==============================================================================
+// 1. SCHNITTSTELLE: Bluetooth FTMS (Kinomap)
+// ==============================================================================
+struct FTMSServiceData
 {
-  // Physische Trainingsdaten
-  bool pedalPulseDetected;
-  bool btClientCOnnected; // Status des FTMS-Servers
-  bool hrSensorConnected; // Status des Pulsgurts
-
-  int32_t cadenceRPM;
-  int32_t heartRateBPM;
-  int32_t heartRateBPM_Average;
-  int32_t currentGear;
-  int32_t targetMotorPosition;
-  int32_t controlMode;
-  int32_t currentPowerWatt;
-  int32_t targetPowerWatt;
-  int32_t distanceMillimeters;
-
-  float targetSlope;    // Steigung in % (z.B. -1.5f oder 5.5f)
-  float speedKmH;       // Geschwindigkeit (z.B. 28.4f)
-  float targetTorqueNm; // Bremsmoment vom Ergometer (z.B. 45.0f)
-
-  // Speicher für Labels und Werte
-  char displayLabels[MATRIX_ROWS][MATRIX_COLS]
-                    [6]; // Max 5 Zeichen für Label (z.B. "RPM")
-  uint32_t displayValues[MATRIX_ROWS][MATRIX_COLS];
-
-  // Der fertige String für das Display
-  char displayMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1];
-
-  OpMode controlMode;
+  bool btClientConnected;  // Verbindung zur App aktiv
+  float targetSlope;       // Soll-Steigung von der App in %
+  int32_t targetPowerWatt; // Soll-Leistung von der App im ERG-Modus
+  OpMode rxControlMode;    // Von der App angeforderter Modus (Simu/Manual)
 };
 
-extern ErgometerData systemData;
+// ==============================================================================
+// 2. SCHNITTSTELLE: BLE Pulsgurt (Heart Rate Monitor)
+// ==============================================================================
+struct PulsGurtData
+{
+  bool hrSensorConnected;   // Verbindung zum Gurt aktiv
+  int32_t heartRateBPM;     // Aktueller Live-Puls (Rohwert)
+  int32_t heartRateAverage; // Gefilterter Puls über 10 Sekunden
+  int32_t batteryPercent;   // Batterieladung in %
+
+  int32_t hrBuffer[HR_BUFFER_SIZE];
+  int32_t bufferIndex;
+  int32_t hrSum;
+};
+
+// ==============================================================================
+// 3. SCHNITTSTELLE: Physische GPIOs (Hardware-Inputs & -Outputs)
+// ==============================================================================
+struct GPIOHardwareData
+{
+  // Live-Zustände der physikalischen Pins (Wichtig für Diagnose und Logik)
+  bool cadenceRawPulse;        // Momentaner Zustand von GPIO 10 (Reed-Sensor)
+  bool encoderRawPulse;        // Momentaner Zustand von GPIO 11 (Motor-Inkrementalgeber)
+  bool referenceSwitchPressed; // Momentaner Zustand von GPIO 12 (Referenzschalter, entprellt/aktiviert)
+
+  bool pedalPulseDetected;     // Signalisiert, dass ein Kurbel-Umdrehungs-Impuls erkannt wurde (ISR-Trigger)
+  int32_t actualMotorPosition; // Aktuell gezählte Schrittzahl des Inkrementalgebers (Ist-Wert)
+  int32_t targetMotorPosition; // Anzufahrende Ziel-Schrittzahl des Stellmotors (Soll-Wert)
+
+  int32_t lastGearChangeTime;
+};
+
+// ==============================================================================
+// 4. KERN: Berechnete Ergometer-Fahrdaten (Fahrphysik & Status)
+// ==============================================================================
+struct ErgometerData
+{
+  OpMode controlMode;           // Aktiver Steuerungsmodus (Homing, Manual, Puls, Simu)
+  int32_t currentGear;          // Aktueller virtueller Gang (1 bis 13)
+  float speedKmH;               // Berechnete virtuelle Geschwindigkeit in km/h
+  float targetTorqueNm;         // Berechnetes Soll-Bremsmoment in Nm
+  int32_t currentPowerWatt;     // Berechnete / getretene Leistung in Watt
+  uint32_t distanceMillimeters; // Gesamtstrecke in Millimetern
+};
+
+// ==============================================================================
+// 5. DIAGNOSE & VISUALISIERUNG: TFT Onboard-Display
+// ==============================================================================
+struct DisplayData
+{
+  // Speicher für Labels, z.B. "RPM" (Max 5 Zeichen + Nullterminator)
+  char displayLabels[MATRIX_ROWS][MATRIX_COLS][6];
+
+  // Speicher für Ganzzahlen-Werte, die den Labels zugeordnet sind
+  uint32_t displayValues[MATRIX_ROWS][MATRIX_COLS];
+
+  // Der fertige, formatierte String, den das Display zeichnet
+  char displayMatrix[MATRIX_ROWS][MATRIX_COLS][COL_CHAR_LIMIT + 1];
+};
+
+// ==============================================================================
+// INLINE-DEFINITIONEN (Echte Definitionen direkt im Header!)
+// ==============================================================================
+inline FTMSServiceData ftmsData;
+inline PulsGurtData pulsGurtData;
+inline GPIOHardwareData gpioData;
+inline ErgometerData systemData;
+inline DisplayData displayData;
 
 #endif

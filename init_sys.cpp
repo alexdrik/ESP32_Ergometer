@@ -10,27 +10,14 @@
 #include <TFT_eSPI.h>
 #include <WiFi.h>
 
-// Definition der globalen Datenstruktur (nur einmal im Projekt!)
-ErgometerData systemData;
-
 // Zugriff auf die ISR-Variablen aus getInputs.cpp
 extern void IRAM_ATTR cadenceISR();
 extern void IRAM_ATTR encoderISR();
 extern void IRAM_ATTR referenceISR();
 
-// geheime Zugangsdatena aus secrets.h reinkopieren
-const char *ssid = SECRET_SSID;
-const char *password = SECRET_PASSWORD;
-
-volatile int32_t rxHeartRate = 0;
-volatile int32_t rxHrBattery = 100;
-volatile bool rxHrConnected = false;
-
-// UUIDs für den Heart Rate Client
-static BLEUUID hrServiceUUID("0000180d-0000-1000-8000-00805f9b34fb");
-static BLEUUID hrCharUUID("00002a37-0000-1000-8000-00805f9b34fb");
-static BLEUUID batServiceUUID("0000180f-0000-1000-8000-00805f9b34fb");
-static BLEUUID batCharUUID("00002a19-0000-1000-8000-00805f9b34fb");
+BLEServer *pServer = nullptr;
+BLECharacteristic *pControlPointCharacteristic = nullptr;
+BLECharacteristic *pBikeDataCharacteristic = nullptr;
 
 static BLEAdvertisedDevice *myDevice;
 static BLEClient *pClient = nullptr;
@@ -42,7 +29,6 @@ const uint8_t PWM_RES_BITS = 8;
 const uint8_t CH_MOTOR_POS = 0; // PWM Kanal 0
 const uint8_t CH_MOTOR_NEG = 1; // PWM Kanal 1
 
-// Callback für den Empfang der Live-Pulsdaten
 static void hrNotifyCallback(
     BLERemoteCharacteristic *pBLERemoteCharacteristic,
     uint8_t *pData,
@@ -52,14 +38,39 @@ static void hrNotifyCallback(
   if (length >= 2)
     {
       uint8_t flags = pData[0];
-      // Bit 0 der Flags bestimmt das Format: 0 = 8-Bit Puls, 1 = 16-Bit Puls
+      int32_t rawHeartRate = 0;
+
       if ((flags & 0x01) == 0)
         {
-          rxHeartRate = pData[1];
+          rawHeartRate = pData[1];
         }
       else
         {
-          rxHeartRate = pData[1] | (pData[2] << 8);
+          rawHeartRate = pData[1] | (pData[2] << 8);
+        }
+
+      // --- DER REKURSIVE FILTER ---
+      if (rawHeartRate > 0)
+        {
+          // 1. Letzten (ältesten) Wert an der Zeigerposition abziehen
+          pulsGurtData.hrSum -= pulsGurtData.hrBuffer[pulsGurtData.bufferIndex];
+
+          // 2. Neuen Wert in den Puffer schreiben
+          pulsGurtData.hrBuffer[pulsGurtData.bufferIndex] = rawHeartRate;
+
+          // 3. Neuen Wert auf die Summe aufaddieren
+          pulsGurtData.hrSum += rawHeartRate;
+
+          // 4. Index für den nächsten Wert verschieben (mit Ringüberlauf)
+          pulsGurtData.bufferIndex++;
+          if (pulsGurtData.bufferIndex >= HR_BUFFER_SIZE)
+            {
+              pulsGurtData.bufferIndex = 0;
+            }
+
+          // 5. Mittelwert berechnen und an Core 1 übergeben
+          pulsGurtData.heartRateBPM = rawHeartRate;
+          pulsGurtData.heartRateAverage = pulsGurtData.hrSum / HR_BUFFER_SIZE;
         }
     }
 }
@@ -201,6 +212,18 @@ void ESP_init()
   systemData.hrSensorConnected = false;
   systemData.btClientConnected = false;
 
+  // --- 2. PULSGURT MIT 90 BPM INITIALISIEREN ---
+  pulsGurtData.hrSensorConnected = false;
+  pulsGurtData.heartRateBPM = 90;
+  pulsGurtData.heartRateAverage = 90;
+  pulsGurtData.batteryPercent = 100;
+  pulsGurtData.bufferIndex = 0;
+  pulsGurtData.hrSum = 900; // 10 Einträge * 90 bpm
+  for (int32_t i = 0; i < HR_BUFFER_SIZE; i++)
+    {
+      pulsGurtData.hrBuffer[i] = 90;
+    }
+
   Serial.println("-> [1] ESP32-Basis & Interrupt-GPIOs erfolgreich konfiguriert.");
 }
 
@@ -261,7 +284,6 @@ void Display_init()
 {
   pinMode(PIN_POWER_ON, OUTPUT);
   digitalWrite(PIN_POWER_ON, HIGH);
-
   pinMode(PIN_LCD_BL, OUTPUT);
   digitalWrite(PIN_LCD_BL, HIGH);
 
@@ -269,34 +291,18 @@ void Display_init()
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
 
-  // Alles leeren beim Start
+  // Gitter des neuen displayData-Structs beim Start leeren
   for (uint32_t r = 0; r < MATRIX_ROWS; r++)
     {
       for (uint32_t c = 0; c < MATRIX_COLS; c++)
         {
-          strcpy(systemData.displayLabels[r][c], "");
-          systemData.displayValues[r][c] = 0;
-          strcpy(systemData.displayMatrix[r][c], "");
+          strcpy(displayData.displayLabels[r][c], "");
+          displayData.displayValues[r][c] = 0;
+          strcpy(displayData.displayMatrix[r][c], "");
         }
     }
-
   Serial.println("-> [2] Display initialisiert.");
 }
-
-void WLAN_init() { Serial.println("-> [3] WLAN nicht bereit."); }
-
-// Asynchrone Zwischenspeicher für den Core-Übergang (Core 0 -> Core 1)
-volatile uint32_t rxControlMode = 0;
-volatile uint32_t rxTargetPower = 0;
-volatile float rxTargetSlope = 0.0f;
-volatile bool rxBtConnected = false;
-
-// UUIDs für den Fitness Machine Service (FTMS)
-#define FTMS_SERVICE_UUID "00001826-0000-1000-8000-00805f9b34fb"
-#define FTMS_CONTROL_POINT_UUID "00002ad9-0000-1000-8000-00805f9b34fb"
-
-BLEServer *pServer = nullptr;
-BLECharacteristic *pControlPointCharacteristic = nullptr;
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -383,6 +389,12 @@ void Bluetooth_init()
   pServer->startAdvertising();
 
   initHeartRateScan();
+
+  // Bike Data Charakteristik erstellen (Notify ist Pflicht, damit die App Daten empfangen kann)
+  pBikeDataCharacteristic = pService->createCharacteristic(
+      FTMS_BIKE_DATA_UUID,
+      BLECharacteristic::PROPERTY_NOTIFY);
+  pBikeDataCharacteristic->addDescriptor(new BLE2902());
 
   Serial.println("-> Bluetooth FTMS aktiv auf Core 0.");
 }

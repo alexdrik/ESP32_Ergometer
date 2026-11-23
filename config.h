@@ -1,23 +1,40 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// GPIO Pins
-#define MOTOR_POS_PIN 1 // Output-Pin für Motorrichtung positiv
-#define MOTOR_NEG_PIN 2 // Output-Pin für Motorrichtung negativ
-#define RESERVE_PIN 3   // noch nicht benutzt
+/*
+lila Ader           -> +11.5V Spannungsversorgung
+dunkelblaue Ader    -> Motor negativ (GPIO 2 über DRV8833 Out1)
+gruene Ader          -> Motor positiv (GPIO 1 über DRV8833 Out2)
+gelbe Ader          -> Inkrementalgeber (GPIO 11)
+orange Ader         -> ???
+rote Ader           -> Referenzzschalter INkrementalgeber
+braune Ader         -> Ground Spannungsversorgung
+schwarze Ader       -> Reed-Schalter für Kadenzmessung
+*/
 
-#define KADENCE_PIN 10     // Input-Pin für Kadenz-Messung
-#define INKREMENTAL_PIN 11 // Input-Pin für Inkrementalgeber-Messung
-#define REFERENCE_PIN 12   // Input-Pin für Inkrementalgeber-Referenz
+// GPIO Pins left
+#define MOTOR_POS_PIN 1    // (ADC1 CH0) Output-Pin fuer Motorrichtung positiv
+#define MOTOR_NEG_PIN 2    // (ADC1 CH1) Output-Pin fuer Motorrichtung negativ
+#define RESERVE_PIN_3 3    // (ADC1 CH2)
+#define KADENCE_PIN 10     // (SPI2 CS)  Input-Pin fuer Kadenz-Messung
+#define INKREMENTAL_PIN 11 // (SPI2 D)   Input-Pin fuer Inkrementalgeber-Messung
+#define REFERENCE_PIN 12   // (SPI2 CLK) Input-Pin fue Inkrementalgeber-Referenz
+#define RESERVE_PIN_13 13  // (SPI2 Q)
 
-#define GEAR_PLUS 17  // Input-Pin für schwereren Gang
-#define GEAR_MINUS 18 // Input-Pin für leichteren Gang
+// GPIO Pins right
+#define PIN_UART_TX 43    // (UART2 Tx)
+#define PIN_UART_RX 44    // (UART2 Rx)
+#define RESERVE_PIN_18 18 // (UART1 Rx)
+#define RESERVE_PIN_17 17 // (UART1 Tx)
+#define GEAR_MINUS 21     //            Input-Pin fuer leichteren Gang
+#define GEAR_PLUS 16      //            Input-Pin fuer schwereren Gang
 
-#define MENU_EDIT 4   // Input-Pin für Menü-Bedienung
-#define MENU_SWITCH 0 // Input-Pin für Menü-Umschaltung
+// GPIO Pins Onboard Buttons
+#define MENU_SWITCH 0 // (Button)   Input-Pin fuer Menü-Umschaltung
+#define MENU_EDIT 14  // (Button)   Input-Pin fuer Menü-Bedienung
 
 // T-Display-S3 Onboard-Display Konfiguration
-#define PIN_POWER_ON 15 // Schaltet die Stromversorgung des Displays ein
+#define PIN_POWER_ON 15 // (Display)  Schaltet die Stromversorgung des Displays ein
 #define PIN_LCD_BL 38   // Hintergrundbeleuchtung (Backlight)
 
 // System-Konstanten
@@ -35,9 +52,9 @@ const float TOTAL_SYSTEM_WEIGHT_KG = 120.0f; // z.B. 105kg Fahrer + 15kg Ergomet
 // Radumfang-Konfiguration (in Millimetern für die präzise Berechnung)
 const float WHEEL_CIRCUMFERENCE_MM = 2200.0f;
 
-// Gangschaltung Übersetzungen (z.B. 15 Gänge)
+// Gangschaltung Übersetzungen (z.B. 3 x 9 Gänge)
 const uint32_t GEAR_COUNT = 13;
-const float32 GEAR_RATIOS[GEAR_COUNT] = {
+const float GEAR_RATIOS[GEAR_COUNT] = {
     0.99f, // Gang 1 - 1:
     1.33f, // Gang 1 - 2:
     1.68f, // Gang 1 - 3:
@@ -47,7 +64,7 @@ const float32 GEAR_RATIOS[GEAR_COUNT] = {
     3.47f, // Gang 2 - 5:
     3.88f, // Gang 2 - 6:
     4.39f, // Gang 2 - 7:
-    5.09f, // Gang 3 - 6;
+    5.09f, // Gang 3 - 5;
     5.77f, // Gang 3 - 6:
     6.66f, // Gang 3 - 7:
     7.21f  // Gang 3 - 8:
