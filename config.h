@@ -75,34 +75,57 @@ const float GEAR_RATIOS[GEAR_COUNT] = {
 const uint32_t MOTOR_POS_COUNT = 24;
 const uint32_t MOTOR_NEG_RELPOS = 32;
 const uint32_t MOTOR_ABSPOS[MOTOR_POS_COUNT] = {
-    0,   //  1 - 680
-    140, //  2 - 540
-    234, //  3 - 446
-    284, //  4 - 396
-    344, //  5 - 336
-    374, //  6 - 306
-    410, //  7 - 270
-    440, //  8 - 240
-    468, //  9 - 212
-    488, // 10 - 192
-    510, // 11 - 170
-    528, // 12 - 152
-    546, // 13 - 134
-    558, // 14 - 122
-    572, // 15 - 108
-    586, // 16 -  94
-    604, // 17 -  76
-    614, // 18 -  66
-    624, // 19 -  56
-    634, // 20 -  46
-    644, // 21 -  36
-    654, // 22 -  26
-    664, // 23 -  16
-    680  // 24 -   0
-};
+    //  inkr   Gang  680-inkr  diff  Formel      diff
+    0,   //  1 - 680                  0
+    140, //  2 - 540      -140      147       -147
+    234, //  3 - 446       -94      233        -86
+    284, //  4 - 396       -50      294        -61
+    344, //  5 - 336       -60      341        -47
+    374, //  6 - 306       -30      379        -38
+    410, //  7 - 270       -36      412        -33
+    440, //  8 - 240       -30      440        -28
+    468, //  9 - 212       -28      465        -25
+    488, // 10 - 192       -20      488        -23
+    510, // 11 - 170       -22      508        -20
+    528, // 12 - 152       -18      526        -18
+    546, // 13 - 134       -18      543        -17
+    558, // 14 - 122       -12      559        -16
+    572, // 15 - 108       -14      574        -15
+    586, // 16 -  94       -14      587        -13
+    604, // 17 -  76       -18      600        -13
+    614, // 18 -  66       -10      612        -12
+    624, // 19 -  56       -10      624        -12
+    634, // 20 -  46       -10      634        -10
+    644, // 21 -  36       -10      645        -11
+    654, // 22 -  26       -10      655        -10
+    664, // 23 -  16       -10      664         -9
+    680  // 24 -   0       -16      673         -9
 
-// PWM-Einstellungen für das DRV8833 (20kHz Frequenz, 8-Bit Auflösung -> 0 bis 255)
-const uint32_t PWM_FREQ = 20000;
+    // Inkremente = 211.8 * logf(Gang);
+    // Drehmoment = 0.644 * Gang +2.22;
+    // Ergometer-Leistung = Gang * (Kadenz^1.7) / 82
+
+    // Kinomap sendet Steigung s, Rollwiderstandswert cr, Luftwiderstandsbeiwert cw und Windgeschwindigkeit vw
+    // Systemgewicht m ist bekannt, Istgeschwindigkeit v_act wird vom vorherigen Schritt übernommen
+    // Hangabtriebstkraft Fg = m * g * sin(atan(s));
+    // Rollwiderstandskraft Fr = m * g * cr * cos(atan(s));
+    // Luftwiderstandskraft Fa = cw * (vw + v_act)^2
+    // Gesamtwiderstandskraft Fges = Fg + Fr + Fa;
+    // aus dem Gesamtwiderstand, der Getriebeübersetzung und dem Radumfang wird das erforderliche Drehmoment an der Kurbel berechnet.
+    // Kurbelmoment Mk = Fges * (Radumfang / (2 * pi)) / Gangübersetzung;
+    // aus dem Kurbelmoment wird die Inkremente-Anzahl des Stellmotors berechnet.
+    // Inkremente = 211.8 * logf(1.553 * (Mk - 2.22) );
+    // vom Fahrer erbrachte Kadenz auf Fahrradgeschwindigkeit umrechnen
+    // Kadenz * Gangübersetzung = Fahrergeschwindigkeit v_h
+    // wenn v_h > v_act, beschleunigt der Fahrer das Fahrrad mit seiner Ergometer-Leistung
+    // Ergometer-Leistung Pe = e^(Inkremente/211.8) * (Kadenz^1.7) / 82
+    // wenn v_h < v_act, rollt das Fahrrad aus
+    // Pe = 0;
+    // a = (Pe/v_act - Fges) / m;
+    // v_act_neu = v_act + a * dt;
+
+    // PWM-Einstellungen für das DRV8833 (20kHz Frequenz, 8-Bit Auflösung -> 0 bis 255)
+    const uint32_t PWM_FREQ = 20000;
 const uint8_t PWM_RES_BITS = 8;
 const uint8_t CH_MOTOR_POS = 0; // PWM Kanal 0
 const uint8_t CH_MOTOR_NEG = 1; // PWM Kanal 1
